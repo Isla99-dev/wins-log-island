@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wins Log 小岛</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand plank">
+    <svg class="brand-star" viewBox="0 0 7 7" aria-hidden="true"><use href="#px-star"/></svg>
+    <h1><span class="latin">Wins Log</span><span class="cn">小岛</span></h1>
+  </div>
+
+  <div class="date-sign plank" aria-label="今天的日期">
+    <span class="date-main" id="date-main"></span>
+    <span class="date-week" id="date-week"></span>
+  </div>
+
+  <nav class="tabs" aria-label="切换页面">
+    <button class="tab is-active" data-view="island" type="button">🏝 我的小岛</button>
+    <button class="tab" data-view="map" type="button">🗺 世界地图</button>
+  </nav>
+</header>
+
+<!-- ============ 小岛主页 ============ -->
+<main class="view view-island" id="view-island">
+
+  <section class="panel tasks" aria-labelledby="tasks-title">
+    <h2 id="tasks-title" class="panel-title">今日任务</h2>
+
+    <form class="task-entry" onsubmit="return false">
+      <input type="text" disabled placeholder="写下今天想做的一件事…" aria-label="新任务">
+      <button class="pixel-btn" type="button" disabled>种下</button>
+    </form>
+    <p class="soon">✎ 添加和完成任务会在第 2 步开放</p>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <h3 class="sub-title">
+      今天的 Wins
+      <span class="count-badge"><b id="win-count">0</b> 件</span>
+    </h3>
+    <ol class="wins" id="wins"></ol>
+    <p class="empty" id="wins-empty">还没有记录。完成一件小事，就会出现在这里。</p>
+
+    <div class="panel-foot">
+      <button class="pixel-btn pixel-btn--warm" type="button" disabled title="第 3 步开放">🖨 结束今天</button>
+    </div>
+  </section>
+
+  <section class="panel island" aria-labelledby="island-title">
+    <h2 id="island-title" class="panel-title">我的小岛</h2>
+    <div class="island-frame">
+      <canvas id="island" width="96" height="60" aria-label="像素小岛，小人在田边陪你"></canvas>
+    </div>
+    <p class="caption">小人在田边陪着你。完成一件事，岛上就会长出一样东西（第 4 步）。</p>
+  </section>
+
+  <section class="panel helper" aria-labelledby="helper-title">
+    <h2 id="helper-title" class="panel-title">小岛助手</h2>
+    <div class="bubble">
+      嗨，我是住在岛上的小助手。<br>
+      以后你可以跟我说今天想做什么，或者告诉我你有点不想动——我们一起找到最小的第一步。
+    </div>
+    <form class="task-entry" onsubmit="return false">
+      <input type="text" disabled placeholder="跟小助手说点什么…" aria-label="和小助手聊天">
+      <button class="pixel-btn pixel-btn--icon" type="button" disabled aria-label="语音输入">🎙</button>
+    </form>
+    <p class="soon">✎ 聊天会在第 5 步开放，启动助手在第 6 步</p>
+  </section>
+
+</main>
+
+<!-- ============ 世界地图 ============ -->
+<main class="view view-map" id="view-map" hidden>
+  <section class="panel map-panel">
+    <h2 class="panel-title">世界地图</h2>
+    <div class="parchment-map">
+      <p class="map-note">🧭 地图正在绘制中……<br>以后鼠标划过城市，会看到大家今天想做的事。（第 7 步）</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footnote">数据只保存在这台电脑的浏览器里</footer>
+
+<!-- 共用像素小图标 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="px-star" viewBox="0 0 7 7" shape-rendering="crispEdges">
+    <path fill="currentColor" d="M3 0h1v2h1v1h2v1h-2v1h-1v2h-1v-2h-1v-1h-2v-1h2v-1h1z"/>
+  </symbol>
+</svg>
+
+<script src="js/store.js"></script>
+<script src="js/island.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
