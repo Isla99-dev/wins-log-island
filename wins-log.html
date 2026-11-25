@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wins Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Serif+SC:wght@400;500&family=Nunito:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f6f0e4;
+    --ink: #4a3426;
+    --ink-soft: rgba(74, 52, 38, 0.55);
+    --ink-faint: rgba(74, 52, 38, 0.18);
+    --accent: #c99a96;   /* 雾粉 */
+    --serif: "Cormorant Garamond", "Noto Serif SC", "Songti SC", Georgia, serif;
+    --sans: "Nunito", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { background: var(--paper); }
+
+  body {
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.7;
+    background-color: var(--paper);
+    /* 纸张纹理：细噪点 + 极淡的暖色晕染 */
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.29  0 0 0 0 0.2  0 0 0 0 0.15  0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+      radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.55), transparent 60%),
+      radial-gradient(ellipse at 100% 100%, rgba(201,154,150,0.07), transparent 55%);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 14vh 28px 18vh;
+  }
+
+  /* —— 页眉 —— */
+  .date {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(56px, 11vw, 84px);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    margin: 10px 0 0;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+
+  .count {
+    margin-top: 28px;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+  }
+  .count b {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--ink);
+    margin: 0 3px;
+    display: inline-block;
+    transition: transform .4s cubic-bezier(.3,1.6,.5,1);
+  }
+  .count b.bump { transform: scale(1.25); color: var(--accent); }
+
+  /* —— 输入 —— */
+  .entry {
+    margin-top: 72px;
+    position: relative;
+  }
+  .entry input {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid var(--ink-faint);
+    background: transparent;
+    padding: 10px 0 12px;
+    font: inherit;
+    font-size: 18px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color .3s;
+  }
+  .entry input::placeholder { color: var(--ink-soft); opacity: .7; font-style: normal; }
+  .entry input:focus { border-color: var(--accent); }
+  .entry .hint {
+    position: absolute; right: 0; bottom: 14px;
+    font-size: 12px; letter-spacing: .12em; color: var(--ink-soft);
+    opacity: 0; transition: opacity .3s;
+    pointer-events: none;
+  }
+  .entry input:focus ~ .hint { opacity: .8; }
+
+  /* —— 列表 —— */
+  ol {
+    list-style: none;
+    margin-top: 48px;
+  }
+  li {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 14px 0;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), text-shadow .35s;
+    animation: rise .6s cubic-bezier(.2,.8,.2,1) both;
+  }
+  li:hover {
+    transform: translateY(-3px);
+    text-shadow: 0 6px 14px rgba(74, 52, 38, 0.12);
+  }
+  .num {
+    flex: none;
+    width: 22px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ink-soft);
+  }
+  .text { flex: 1; word-break: break-word; }
+  .time {
+    flex: none;
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--ink-soft);
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  li:hover .time { opacity: 1; }
+  .del {
+    flex: none;
+    border: 0; background: none; cursor: pointer;
+    font-size: 16px; line-height: 1;
+    color: var(--ink-soft);
+    opacity: 0; transition: opacity .3s, color .2s;
+    padding: 0 2px;
+  }
+  li:hover .del { opacity: .7; }
+  .del:hover { color: var(--accent); opacity: 1; }
+
+  /* 小星星 */
+  .star {
+    position: absolute;
+    left: -26px;
+    top: 50%;
+    width: 14px; height: 14px;
+    margin-top: -7px;
+    color: var(--accent);
+    pointer-events: none;
+    animation: pop 1.1s cubic-bezier(.3,1.5,.5,1) forwards;
+  }
+  .star.s2 { left: -14px; margin-top: -18px; width: 8px; height: 8px; animation-delay: .12s; opacity: 0; }
+
+  @keyframes pop {
+    0%   { opacity: 0; transform: scale(0) rotate(-40deg); }
+    35%  { opacity: 1; transform: scale(1.25) rotate(10deg); }
+    60%  { opacity: 1; transform: scale(1) rotate(0); }
+    100% { opacity: 0; transform: translateY(-10px) scale(.85) rotate(20deg); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  li.leaving { opacity: 0; transform: translateX(10px); transition: opacity .3s, transform .3s; }
+
+  .empty {
+    margin-top: 48px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 19px;
+    color: var(--ink-soft);
+  }
+
+  footer {
+    margin-top: 96px;
+    text-align: center;
+    color: var(--accent);
+    font-family: var(--serif);
+    letter-spacing: .6em;
+    opacity: .7;
+  }
+
+  @media (max-width: 480px) {
+    main { padding: 10vh 22px 14vh; }
+    .entry { margin-top: 56px; }
+    .star { left: -18px; }
+    .star.s2 { left: -8px; }
+    .time { display: none; }
+    .del { opacity: .4; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="date" id="date"></p>
+    <h1>Wins <em>Log</em></h1>
+    <p class="count">今天已完成<b id="count">0</b>件</p>
+  </header>
+
+  <form class="entry" id="form" autocomplete="off">
+    <input id="input" type="text" placeholder="今天完成了什么？" aria-label="输入一件完成的事" maxlength="200" autofocus>
+    <span class="hint">↵ 回车记下</span>
+  </form>
+
+  <ol id="list"></ol>
+  <p class="empty" id="empty">一页空白，等你写下第一件小事。</p>
+
+  <footer>✦ ✦ ✦</footer>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 0c.6 6.4 5.6 11.4 12 12-6.4.6-11.4 5.6-12 12-.6-6.4-5.6-11.4-12-12C6.4 11.4 11.4 6.4 12 0z"/></symbol>
+</svg>
+
+<script>
+(function () {
+  const KEY = "wins-log-v1";
+  const $ = (id) => document.getElementById(id);
+  const list = $("list"), input = $("input"), countEl = $("count"), empty = $("empty");
+
+  const now = new Date();
+  const todayKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+  $("date").textContent = now.getFullYear() + " 年 " + (now.getMonth() + 1) + " 月 " + now.getDate() + " 日 · " + weekdays[now.getDay()];
+
+  // 数据结构：{ "2026-11-25": [{ id, text, t }] }
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {}
+  }
+  const store = load();
+  const today = () => (store[todayKey] = store[todayKey] || []);
+
+  function fmtTime(t) {
+    const d = new Date(t);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function renderCount(bump) {
+    countEl.textContent = today().length;
+    empty.style.display = today().length ? "none" : "";
+    if (bump) {
+      countEl.classList.add("bump");
+      setTimeout(() => countEl.classList.remove("bump"), 350);
+    }
+  }
+
+  function renumber() {
+    [...list.children].forEach((li, i) => (li.querySelector(".num").textContent = i + 1));
+  }
+
+  function makeItem(item, withStar) {
+    const li = document.createElement("li");
+    li.dataset.id = item.id;
+    li.innerHTML =
+      '<span class="num"></span><span class="text"></span>' +
+      '<span class="time"></span><button class="del" type="button" aria-label="删除">×</button>';
+    li.querySelector(".text").textContent = item.text;
+    li.querySelector(".time").textContent = fmtTime(item.t);
+    li.querySelector(".del").addEventListener("click", () => remove(item.id, li));
+    if (withStar) {
+      li.insertAdjacentHTML("beforeend",
+        '<svg class="star"><use href="#star"/></svg><svg class="star s2"><use href="#star"/></svg>');
+      setTimeout(() => li.querySelectorAll(".star").forEach((s) => s.remove()), 1400);
+    } else {
+      li.style.animation = "none";
+    }
+    return li;
+  }
+
+  function remove(id, li) {
+    store[todayKey] = today().filter((x) => x.id !== id);
+    save();
+    li.classList.add("leaving");
+    setTimeout(() => { li.remove(); renumber(); }, 300);
+    renderCount(false);
+  }
+
+  today().forEach((item) => list.appendChild(makeItem(item, false)));
+  renumber();
+  renderCount(false);
+
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, t: Date.now() };
+    today().push(item);
+    save();
+    list.appendChild(makeItem(item, true));
+    renumber();
+    renderCount(true);
+    input.value = "";
+  });
+})();
+</script>
+</body>
+</html>
