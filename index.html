@@ -59,9 +59,10 @@
   <section class="panel island" aria-labelledby="island-title">
     <h2 id="island-title" class="panel-title">我的小岛</h2>
     <div class="island-frame">
-      <canvas id="island" width="96" height="60" aria-label="像素小岛，小人在田边陪你"></canvas>
+      <canvas id="island" width="128" height="80" aria-label="像素小岛：今天的任务种在田里，完成过的事都长在岛上"></canvas>
+      <div class="island-tip" id="island-tip" hidden></div>
     </div>
-    <p class="caption">小人在田边陪着你。完成一件事，岛上就会长出一样东西（第 4 步）。</p>
+    <p class="caption" id="island-caption" aria-live="polite"></p>
   </section>
 
   <section class="panel helper" aria-labelledby="helper-title">

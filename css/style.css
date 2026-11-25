@@ -410,6 +410,23 @@ li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
   image-rendering: crisp-edges;
 }
 .caption { margin-top: 10px; font-size: 14px; color: var(--ink-soft); }
+.island-frame { position: relative; }
+.island-tip {
+  position: absolute;
+  z-index: 3;
+  max-width: 240px;
+  padding: 5px 10px 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fffaf0;
+  pointer-events: none;
+  box-shadow:
+    0 -2px 0 0 var(--wood-dark), 0 2px 0 0 var(--wood-dark),
+    -2px 0 0 0 var(--wood-dark), 2px 0 0 0 var(--wood-dark),
+    0 5px 0 0 rgba(74, 47, 34, 0.2);
+}
+.island-tip[hidden] { display: none; }
 
 /* ---------- 小助手 ---------- */
 .bubble {

@@ -13,6 +13,11 @@ var Tasks = (function () {
   var todoEl, winsEl;
 
   function pad(n) { return String(n).padStart(2, "0"); }
+
+  // 通知其他模块（比如小岛）：任务有变化
+  function announce(type, id) {
+    document.dispatchEvent(new CustomEvent("wins:change", { detail: { type: type, id: id } }));
+  }
   function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
 
   // ---------- 渲染 ----------
@@ -132,6 +137,7 @@ var Tasks = (function () {
     if (li.classList.contains("is-done")) return;
     var id = li.dataset.id;
     Store.completeTask(id); // 先存，动画中途关掉页面也不会丢
+    announce("complete", id);
 
     if (reduceMotion) { renderTodos(); renderWins(id); return; }
 
@@ -154,6 +160,7 @@ var Tasks = (function () {
   function remove(li) {
     var id = li.dataset.id;
     Store.removeTask(id);
+    announce("remove", id);
     li.style.height = li.offsetHeight + "px";
     void li.offsetHeight;
     li.classList.add("is-leaving");
@@ -162,6 +169,7 @@ var Tasks = (function () {
 
   function undo(li) {
     Store.uncompleteTask(li.dataset.id);
+    announce("undo", li.dataset.id);
     renderWins();
     renderTodos();
   }
@@ -181,6 +189,7 @@ var Tasks = (function () {
       todoEl.appendChild(li);
       $("todo-empty").hidden = true;
       input.value = "";
+      announce("add", task.id);
     });
 
     // 点一整行就算完成；删除按钮单独处理

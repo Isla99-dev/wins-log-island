@@ -98,6 +98,15 @@ var Store = (function () {
         .sort(function (a, b) { return a.doneAt - b.doneAt; });
     },
 
+    // 所有日子里完成过的事（按完成时间排序），小岛用它来决定长出什么
+    allWins: function () {
+      var all = [];
+      Object.keys(data.days).forEach(function (k) {
+        data.days[k].tasks.forEach(function (t) { if (t.doneAt) all.push(t); });
+      });
+      return all.sort(function (a, b) { return a.doneAt - b.doneAt; });
+    },
+
     addTask: function (text) {
       var task = { id: newId(), text: String(text).slice(0, 200), createdAt: Date.now(), doneAt: null };
       getDay().tasks.push(task);
