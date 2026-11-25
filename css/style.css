@@ -536,6 +536,13 @@ li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
 .chip:hover { transform: translateY(-2px); }
 
 .chat-entry .pixel-btn { flex: none; }
+
+/* 助手消息下方可以直接点的回答 */
+.quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 3px 2px; }
+.quick-replies .chip { background: var(--parchment-deep); }
+
+.todo li.is-done .split { visibility: hidden; }
+.mini-btn.split { font-size: 15px; }
 .pixel-btn.is-listening {
   background: var(--berry);
   animation: listening 1s steps(2) infinite;

@@ -34,6 +34,7 @@ var Tasks = (function () {
     li.innerHTML =
       '<button class="check" type="button"></button>' +
       '<span class="text"></span>' +
+      '<button class="mini-btn split" type="button" aria-label="请小助手拆小一点" title="太大了？让小助手拆小一点">✂</button>' +
       '<button class="mini-btn del" type="button" aria-label="删除这条">×</button>';
     li.querySelector(".text").textContent = t.text;
     li.querySelector(".check").setAttribute("aria-label", "完成：" + t.text);
@@ -210,6 +211,20 @@ var Tasks = (function () {
     return ids.length;
   }
 
+  // 把一件大任务换成几个小步骤；今天没有这件任务就直接加进去。返回是否真的替换了
+  function replaceWith(source, steps) {
+    var n = norm(source), match = null;
+    Store.todosOf().forEach(function (t) {
+      if (!match && norm(t.text) === n) match = t;
+    });
+    if (match) {
+      Store.removeTask(match.id);
+      announce("remove", match.id);
+    }
+    addMany(steps);
+    return !!match;
+  }
+
   function init() {
     todoEl = $("todo");
     winsEl = $("wins");
@@ -233,6 +248,10 @@ var Tasks = (function () {
       var li = e.target.closest("li");
       if (!li) return;
       if (e.target.closest(".del")) remove(li);
+      else if (e.target.closest(".split")) {
+        var text = li.querySelector(".text").textContent;
+        document.dispatchEvent(new CustomEvent("wins:ask", { detail: { text: "帮我把「" + text + "」拆小一点" } }));
+      }
       else complete(li);
     });
 
@@ -248,6 +267,7 @@ var Tasks = (function () {
     init: init,
     addMany: addMany,
     recordDone: recordDone,
+    replaceWith: replaceWith,
     todayTexts: function () {
       return {
         todos: Store.todosOf().map(function (t) { return t.text; }),

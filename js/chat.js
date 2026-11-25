@@ -26,8 +26,26 @@ var Chat = (function () {
     bubble.textContent = msg.text;
     wrap.appendChild(bubble);
     if (msg.plan) wrap.appendChild(renderPlan(msg, index));
+    if (msg.quickReplies && msg.quickReplies.length) {
+      var qr = document.createElement("div");
+      qr.className = "quick-replies";
+      msg.quickReplies.forEach(function (text) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip";
+        b.textContent = text;
+        b.addEventListener("click", function () { send(text); });
+        qr.appendChild(b);
+      });
+      wrap.appendChild(qr);
+    }
     log.appendChild(wrap);
     return wrap;
+  }
+
+  // 只有最新一条助手消息的快捷回答可以点，旧的收起来
+  function retireQuickReplies() {
+    log.querySelectorAll(".quick-replies").forEach(function (q) { q.remove(); });
   }
 
   function renderPlan(msg, index) {
@@ -54,14 +72,16 @@ var Chat = (function () {
     foot.className = "plan-foot";
     if (plan.applied) {
       foot.innerHTML = '<span class="plan-done"></span>';
-      foot.firstChild.textContent = plan.mode === "todo"
-        ? "✓ 已种下 " + plan.appliedCount + " 件"
-        : "✓ 已划掉 " + plan.appliedCount + " 件";
+      foot.firstChild.textContent = {
+        todo: "✓ 已种下 " + plan.appliedCount + " 件",
+        done: "✓ 已划掉 " + plan.appliedCount + " 件",
+        split: plan.replaced ? "✓ 已换成 " + plan.appliedCount + " 个小步骤" : "✓ 已种下 " + plan.appliedCount + " 个小步骤"
+      }[plan.mode];
     } else {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pixel-btn" + (plan.mode === "done" ? " pixel-btn--warm" : "");
-      btn.textContent = plan.mode === "todo" ? "🌱 种到田里" : "✨ 全部划掉";
+      btn.textContent = { todo: "🌱 种到田里", done: "✨ 全部划掉", split: "✂ 换成这几步" }[plan.mode];
       btn.addEventListener("click", function () { applyPlan(card, index); });
       foot.appendChild(btn);
     }
@@ -80,6 +100,10 @@ var Chat = (function () {
   function renderAll() {
     log.innerHTML = "";
     history.forEach(renderMessage);
+    // 刷新后只保留最后一条的快捷回答
+    var all = log.querySelectorAll(".quick-replies");
+    for (var i = 0; i < all.length - 1; i++) all[i].remove();
+    if (all.length && history[history.length - 1].role !== "assistant") all[all.length - 1].remove();
     scrollDown();
   }
 
@@ -97,6 +121,14 @@ var Chat = (function () {
 
     if (plan.mode === "todo") {
       Tasks.addMany(texts);
+      replaceCard(card, index);
+      return;
+    }
+
+    if (plan.mode === "split") {
+      // 今日任务里有这件大任务，就换成小步骤；没有就直接加进去
+      plan.replaced = Tasks.replaceWith(plan.source, texts);
+      save();
       replaceCard(card, index);
       return;
     }
@@ -129,6 +161,7 @@ var Chat = (function () {
     text = (text || "").trim();
     if (!text || busy) return;
     busy = true;
+    retireQuickReplies();
     history.push({ role: "user", text: text, t: Date.now() });
     save();
     renderMessage(history[history.length - 1]);
@@ -139,16 +172,19 @@ var Chat = (function () {
     log.appendChild(typing);
     scrollDown();
 
-    var messages = history.map(function (m) { return { role: m.role, text: m.text }; });
+    var messages = history.map(function (m) { return { role: m.role, text: m.text, flow: m.flow || null }; });
     AI.chat(messages, Tasks.todayTexts())
       .then(function (res) {
         var msg = { role: "assistant", text: res.reply, t: Date.now() };
         if (res.plan && res.plan.items && res.plan.items.length) {
           msg.plan = {
             mode: res.plan.mode,
+            source: res.plan.source || null,
             items: res.plan.items.map(function (t) { return { text: t, checked: true }; })
           };
         }
+        if (res.quickReplies && res.quickReplies.length) msg.quickReplies = res.quickReplies;
+        if (res.flow) msg.flow = res.flow;
         return msg;
       })
       .catch(function () {
@@ -246,6 +282,13 @@ var Chat = (function () {
     });
 
     $("chat-mic").addEventListener("click", toggleMic);
+
+    // 任务旁边的 ✂ 按钮：请助手把这件事拆小
+    document.addEventListener("wins:ask", function (e) {
+      if (!e.detail || !e.detail.text) return;
+      document.querySelector(".helper").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      send(e.detail.text);
+    });
 
     $("chat-chips").addEventListener("click", function (e) {
       var chip = e.target.closest(".chip");
