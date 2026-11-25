@@ -437,6 +437,109 @@ li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
 }
 .map-note { font-family: var(--font-cute); font-size: 18px; color: var(--wood-dark); line-height: 1.9; }
 
+/* ---------- 结束今天：小打印机 ---------- */
+body.has-modal { overflow: hidden; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: rgba(46, 29, 20, 0.78);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  padding: 7vh 16px 48px;
+  animation: fade-in .25s steps(3) both;
+}
+.modal[hidden] { display: none; }
+
+.printer-stage {
+  width: 340px;
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.printer { position: relative; z-index: 2; width: 340px; max-width: 100%; }
+.printer-top {
+  height: 16px;
+  margin: 0 22px;
+  background: var(--wood);
+  box-shadow:
+    0 -4px 0 0 var(--wood-dark), -4px 0 0 0 var(--wood-dark), 4px 0 0 0 var(--wood-dark);
+}
+.printer-body {
+  position: relative;
+  height: 78px;
+  background: #f0e2c4;
+  box-shadow:
+    0 -4px 0 0 var(--wood-dark), 0 4px 0 0 var(--wood-dark),
+    -4px 0 0 0 var(--wood-dark), 4px 0 0 0 var(--wood-dark),
+    inset 0 -10px 0 0 #dcc8a2;
+}
+.printer-led {
+  position: absolute;
+  top: 14px; right: 18px;
+  width: 8px; height: 8px;
+  background: #8fdc6a;
+  box-shadow: 0 0 0 2px var(--wood-dark);
+}
+.printer.is-printing .printer-led { animation: blink .3s steps(1) infinite; }
+.printer-label {
+  position: absolute;
+  top: 10px; left: 18px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  letter-spacing: .1em;
+  color: var(--wood);
+}
+.printer-slot {
+  position: absolute;
+  left: 14px; right: 14px; bottom: 14px;
+  height: 8px;
+  background: #3a2419;
+}
+.printer.is-printing .printer-body { animation: rumble .14s steps(2) infinite; }
+
+/* 小票从出纸口慢慢吐出来 */
+.receipt-slot {
+  position: relative;
+  z-index: 1;
+  margin-top: -18px; /* 让纸看起来是从出纸口里出来的 */
+  width: 300px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.receipt-roll {
+  transform: translateY(-100%);
+  filter: drop-shadow(0 4px 0 rgba(58, 36, 25, 0.25));
+}
+.receipt-roll.is-out {
+  transform: none;
+  transition: transform var(--print-dur, 2s) steps(var(--print-steps, 16));
+}
+.receipt-roll canvas { display: block; max-width: 100%; height: auto !important; }
+
+.printer-status {
+  margin-top: 18px;
+  font-family: var(--font-cute);
+  font-size: 15px;
+  color: var(--parchment);
+  text-shadow: 1px 1px 0 var(--wood-dark);
+  min-height: 1.6em;
+}
+.printer-actions { margin-top: 10px; display: flex; gap: 14px; }
+.printer-actions[hidden] { display: none; }
+
+@keyframes rumble {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(1px) translateY(-1px); }
+}
+@keyframes blink { 50% { background: #f6d55a; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 .footnote {
   max-width: 1120px;
   margin: 32px auto 0;

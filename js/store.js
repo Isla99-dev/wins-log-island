@@ -114,6 +114,11 @@ var Store = (function () {
       if (t) { t.doneAt = null; save(); }
       return t;
     },
+    // 记下“结束今天”的时间（可以重复打印，以最后一次为准）
+    markEnded: function () {
+      getDay().endedAt = Date.now();
+      save();
+    },
     removeTask: function (id) {
       var day = getDay();
       day.tasks = day.tasks.filter(function (t) { return t.id !== id; });

@@ -52,7 +52,7 @@
     <p class="empty" id="wins-empty">还没有记录。完成一件小事，就会出现在这里。</p>
 
     <div class="panel-foot">
-      <button class="pixel-btn pixel-btn--warm" type="button" disabled title="第 3 步开放">🖨 结束今天</button>
+      <button class="pixel-btn pixel-btn--warm" id="end-day" type="button">🖨 结束今天</button>
     </div>
   </section>
 
@@ -89,6 +89,26 @@
   </section>
 </main>
 
+<!-- ============ 结束今天：小打印机 ============ -->
+<div class="modal" id="printer-modal" role="dialog" aria-modal="true" aria-labelledby="printer-status" hidden>
+  <div class="printer-stage">
+    <div class="printer" id="printer" aria-hidden="true">
+      <div class="printer-top"></div>
+      <div class="printer-body">
+        <span class="printer-led"></span>
+        <span class="printer-label">WINS · PRINTER</span>
+        <span class="printer-slot"></span>
+      </div>
+    </div>
+    <div class="receipt-slot" id="receipt-slot"></div>
+    <p class="printer-status" id="printer-status" aria-live="polite"></p>
+    <div class="printer-actions" id="printer-actions" hidden>
+      <button class="pixel-btn" id="receipt-save" type="button">💾 保存成图片</button>
+      <button class="pixel-btn pixel-btn--icon" id="receipt-close" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
 <footer class="footnote">数据只保存在这台电脑的浏览器里</footer>
 
 <!-- 共用像素小图标 -->
@@ -101,6 +121,7 @@
 <script src="js/store.js"></script>
 <script src="js/island.js"></script>
 <script src="js/tasks.js"></script>
+<script src="js/receipt.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

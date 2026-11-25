@@ -14,6 +14,9 @@
   // ---- 今日任务 & 今天的 Wins ----
   Tasks.init();
 
+  // ---- 结束今天：小打印机 ----
+  Receipt.init();
+
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab");
   tabs.forEach(function (tab) {
