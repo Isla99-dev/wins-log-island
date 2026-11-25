@@ -145,6 +145,7 @@ var Tasks = (function () {
     var id = li.dataset.id;
     Store.completeTask(id); // 先存，动画中途关掉页面也不会丢
     announce("complete", id);
+    Sound.play("done");
 
     if (reduceMotion) { renderTodos(); renderWins(id); return; }
 
@@ -177,6 +178,7 @@ var Tasks = (function () {
   function undo(li) {
     Store.uncompleteTask(li.dataset.id);
     announce("undo", li.dataset.id);
+    Sound.play("undo");
     renderWins();
     renderTodos();
   }
@@ -191,6 +193,7 @@ var Tasks = (function () {
       if (li) li.classList.add("is-new");
     });
     ids.forEach(function (id) { announce("add", id); });
+    Sound.play("add");
     return ids.length;
   }
 
@@ -217,6 +220,7 @@ var Tasks = (function () {
     renderTodos();
     renderWins(ids);
     ids.forEach(function (id) { announce("complete", id); });
+    Sound.play("done");
     return ids.length;
   }
 
@@ -250,6 +254,7 @@ var Tasks = (function () {
       $("todo-empty").hidden = true;
       input.value = "";
       announce("add", task.id);
+      Sound.play("add");
     });
 
     // 点一整行就算完成；删除按钮单独处理

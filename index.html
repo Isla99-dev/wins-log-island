@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wins Log 小岛</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffcf4a' stroke='%236e4029' stroke-width='.6' d='M3 0h1v2h1v1h2v1h-2v1h-1v2h-1v-2h-1v-1h-2v-1h2v-1h1z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
@@ -28,6 +29,7 @@
     <button class="tab lang-toggle" id="lang-toggle" type="button" data-i18n-aria="lang.aria">
       <span data-lang="zh">中</span><span class="lang-sep">/</span><span data-lang="en">EN</span>
     </button>
+    <button class="tab tab--icon" id="open-settings" type="button" data-i18n-aria="settings.open" data-i18n-title="settings.open">⚙</button>
   </nav>
 </header>
 
@@ -131,6 +133,50 @@
   </div>
 </div>
 
+<!-- ============ 设置 ============ -->
+<div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <section class="panel settings-panel">
+    <div class="helper-head settings-head">
+      <h2 id="settings-title" class="panel-title" data-i18n="settings.title">设置</h2>
+      <button class="mini-btn settings-close" id="settings-close" type="button" data-i18n-aria="settings.close">×</button>
+    </div>
+
+    <div class="setting-row">
+      <div>
+        <b data-i18n="settings.sound">音效</b>
+        <p class="settings-note" data-i18n="settings.soundHint"></p>
+      </div>
+      <button class="switch" id="sound-switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings-sound-label">
+        <span class="switch-knob" aria-hidden="true"></span>
+        <span class="switch-label" id="settings-sound-label"></span>
+      </button>
+    </div>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <h3 class="sub-title" data-i18n="settings.data">数据备份</h3>
+    <p class="settings-note" data-i18n="settings.dataHint"></p>
+    <p class="settings-status" id="backup-status"></p>
+
+    <div class="settings-actions">
+      <button class="pixel-btn" id="export-backup" type="button" data-i18n="settings.export">💾 导出备份</button>
+      <button class="pixel-btn pixel-btn--icon" id="import-backup" type="button" data-i18n="settings.import">📂 导入备份</button>
+      <button class="pixel-btn pixel-btn--icon" id="export-text" type="button" data-i18n="settings.exportText">📝 导出 Wins 记录</button>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+    </div>
+
+    <div class="import-confirm" id="import-confirm" hidden>
+      <p id="import-confirm-text"></p>
+      <div class="settings-actions">
+        <button class="pixel-btn pixel-btn--warm" id="import-yes" type="button" data-i18n="settings.importYes">确定导入</button>
+        <button class="pixel-btn pixel-btn--icon" id="import-no" type="button" data-i18n="settings.importNo">取消</button>
+      </div>
+    </div>
+
+    <p class="settings-msg" id="settings-msg" aria-live="polite"></p>
+  </section>
+</div>
+
 <footer class="footnote" data-i18n="footnote"></footer>
 
 <!-- 共用像素小图标 -->
@@ -141,6 +187,7 @@
 </svg>
 
 <script src="js/i18n.js"></script>
+<script src="js/sound.js"></script>
 <script src="js/store.js"></script>
 <script src="js/island.js"></script>
 <script src="js/tasks.js"></script>
@@ -148,6 +195,7 @@
 <script src="js/ai.js"></script>
 <script src="js/chat.js"></script>
 <script src="js/worldmap.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

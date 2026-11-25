@@ -123,6 +123,35 @@ var Store = (function () {
       if (t) { t.doneAt = null; save(); }
       return t;
     },
+    // ---------- 备份 ----------
+    exportData: function () {
+      return { app: "wins-log-island", version: 1, exportedAt: new Date().toISOString(), data: data };
+    },
+    // 看看一个文件是不是我们的备份；是的话返回里面有多少天、多少件 Wins
+    inspectBackup: function (obj) {
+      if (!obj || obj.app !== "wins-log-island" || !obj.data || typeof obj.data.days !== "object") return null;
+      var days = Object.keys(obj.data.days), wins = 0;
+      days.forEach(function (k) {
+        var d = obj.data.days[k];
+        if (d && Array.isArray(d.tasks)) d.tasks.forEach(function (t) { if (t && t.doneAt) wins++; });
+      });
+      return { days: days.length, wins: wins };
+    },
+    importData: function (obj) {
+      data = obj.data;
+      if (!data.meta) data.meta = {};
+      data.meta.importedV1 = true; // 导入后不再从旧版原型重复导入
+      save();
+    },
+    markBackup: function () {
+      data.meta.lastBackupAt = Date.now();
+      save();
+    },
+    lastBackupAt: function () { return data.meta.lastBackupAt || null; },
+    allDays: function () {
+      return Object.keys(data.days).sort().map(function (k) { return { key: k, tasks: data.days[k].tasks || [] }; });
+    },
+
     // 今天和小助手的聊天记录（只保留最近 60 条）
     getChat: function () {
       var day = getDay();

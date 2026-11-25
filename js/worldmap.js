@@ -281,6 +281,7 @@ var WorldMap = (function () {
     clearNotes(true);
     wrap.querySelectorAll(".city.is-active").forEach(function (c) { c.classList.remove("is-active"); });
     btn.classList.add("is-active");
+    Sound.play("pop");
 
     var box = wrap.getBoundingClientRect();
     var stacked = box.width < 560; // 地图太小时，纸条排在地图下面

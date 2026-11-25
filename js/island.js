@@ -356,7 +356,11 @@ var Island = (function () {
     hero.jobs.push({ t: "rest", n: 30 });
   }
 
-  function startReveal(id) { hiddenId = null; reveal = { id: id, start: frame }; }
+  function startReveal(id) {
+    hiddenId = null;
+    reveal = { id: id, start: frame };
+    Sound.play("grow");
+  }
   function finishReveal() { if (hiddenId) startReveal(hiddenId); }
 
   function stepHero() {
@@ -502,7 +506,8 @@ var Island = (function () {
   }
 
   function loop(t) {
-    if (t - last > TICK) {
+    // 小岛不在屏幕上（比如切到了世界地图）时就先暂停，省电
+    if (t - last > TICK && canvas.offsetParent !== null) {
       last = t;
       frame++;
       stepHero();

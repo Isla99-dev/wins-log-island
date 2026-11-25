@@ -236,6 +236,7 @@ var Receipt = (function () {
       roll.style.setProperty("--print-steps", Math.max(8, Math.round(h / 14)));
       void roll.offsetHeight;
       roll.classList.add("is-out");
+      Sound.play("print", dur / 1000);
 
       setTimeout(function () {
         $("printer").classList.remove("is-printing");
@@ -273,6 +274,7 @@ var Receipt = (function () {
       download(currentCanvas.toDataURL("image/png"));
     }
     $("printer-status").textContent = I18n.t("printer.saved");
+    Sound.play("save");
   }
 
   function init() {

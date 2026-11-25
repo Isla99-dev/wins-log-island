@@ -33,6 +33,9 @@
   // ---- 世界地图 ----
   WorldMap.init();
 
+  // ---- 设置：音效、备份 ----
+  Settings.init();
+
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab[data-view]");
   tabs.forEach(function (tab) {
