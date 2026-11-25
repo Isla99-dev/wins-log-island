@@ -91,11 +91,20 @@
 
 <!-- ============ 世界地图 ============ -->
 <main class="view view-map" id="view-map" hidden>
-  <section class="panel map-panel">
-    <h2 class="panel-title">世界地图</h2>
-    <div class="parchment-map">
-      <p class="map-note">🧭 地图正在绘制中……<br>以后鼠标划过城市，会看到大家今天想做的事。（第 7 步）</p>
+  <section class="panel map-panel" aria-labelledby="map-title">
+    <div class="helper-head">
+      <h2 id="map-title" class="panel-title">世界地图</h2>
+      <span class="mode-tag" title="现在是示例留言，以后会接入真实用户">示例留言</span>
     </div>
+    <p class="map-intro">鼠标移到城市上，看看那里的人今天想做什么。星星是你的小岛。</p>
+    <div class="world-frame">
+      <div class="world-wrap" id="world-wrap">
+        <canvas id="world" width="160" height="80" aria-hidden="true"></canvas>
+        <div class="world-notes" id="world-notes" aria-live="polite"></div>
+      </div>
+    </div>
+    <!-- 窄屏时，纸条排在地图下面，不挡住地图 -->
+    <div class="world-notes-below" id="world-notes-below" aria-live="polite"></div>
   </section>
 </main>
 
@@ -134,6 +143,7 @@
 <script src="js/receipt.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/worldmap.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

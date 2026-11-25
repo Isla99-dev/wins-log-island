@@ -20,6 +20,9 @@
   // ---- 小岛助手 ----
   Chat.init();
 
+  // ---- 世界地图 ----
+  WorldMap.init();
+
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab");
   tabs.forEach(function (tab) {
