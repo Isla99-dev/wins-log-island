@@ -6,7 +6,6 @@
  */
 var Receipt = (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var W = 300;          // 小票宽度（CSS 像素）
@@ -24,28 +23,26 @@ var Receipt = (function () {
     pixel: "'Pixelify Sans', monospace"
   };
 
-  var CHEERS = [
-    "今天的你，已经很棒了。",
-    "一件一件，都是真的发生过的事。",
-    "启动很难，但你还是做到了。",
-    "好好休息，明天的小岛还在等你。",
-    "做完的每一件小事，都在悄悄长大。",
-    "谢谢今天认真生活的自己。"
-  ];
-  var REST = "今天没有记下 Win 也没关系，休息也是一种完成。";
-
   function pad2(n) { return String(n).padStart(2, "0"); }
 
-  // ---------- 文字换行（中英文混排，逐字测量） ----------
+  // ---------- 文字换行（中英文混排：中文按字，英文按词） ----------
+  var TOKEN_RE = /[⺀-鿿豈-﫿＀-￯]|[^\s⺀-鿿豈-﫿＀-￯]+|\s+/g;
   function wrap(ctx, text, maxWidth) {
     var lines = [], line = "";
-    for (var i = 0; i < text.length; i++) {
-      var test = line + text[i];
-      if (ctx.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = text[i];
-      } else {
+    var tokens = text.match(TOKEN_RE) || [];
+    for (var i = 0; i < tokens.length; i++) {
+      var tok = tokens[i];
+      var test = line + tok;
+      if (ctx.measureText(test).width <= maxWidth || !line.trim()) {
+        // 单个英文词比一整行还长时，只好按字母拆开
+        if (ctx.measureText(test).width > maxWidth && tok.length > 1) {
+          tokens.splice.apply(tokens, [i + 1, 0].concat(tok.split("")));
+          continue;
+        }
         line = test;
+      } else {
+        lines.push(line.trimEnd());
+        line = /^\s+$/.test(tok) ? "" : tok;
       }
     }
     if (line) lines.push(line);
@@ -92,16 +89,16 @@ var Receipt = (function () {
 
     // 标题
     if (draw) { pixelStar(ctx, PAD + 2, y + 2, 14, COLOR.star); pixelStar(ctx, W - PAD - 16, y + 2, 14, COLOR.star); }
-    text("WINS LOG 小岛", W / 2, y + 16, FONT.title, COLOR.ink, "center");
+    text(I18n.t("receipt.title"), W / 2, y + 16, FONT.title, COLOR.ink, "center");
     y += 40;
     text(info.dateText, W / 2, y, "16px " + FONT.cute, COLOR.ink, "center");
     y += 20;
-    text("打印于 " + info.printedAt, W / 2, y, "12px " + FONT.body, COLOR.soft, "center");
+    text(I18n.t("receipt.printedAt", { t: info.printedAt }), W / 2, y, "12px " + FONT.body, COLOR.soft, "center");
     y += 16;
     if (draw) dashed(ctx, y);
     y += 22;
 
-    text("今天的 Wins", PAD, y, "15px " + FONT.cute, COLOR.ink);
+    text(I18n.t("receipt.wins"), PAD, y, "15px " + FONT.cute, COLOR.ink);
     y += 14;
 
     // 每一条
@@ -111,7 +108,7 @@ var Receipt = (function () {
     if (info.wins.length === 0) {
       y += 10;
       ctx.font = "13px " + FONT.body;
-      wrap(ctx, REST, W - PAD * 2).forEach(function (l) {
+      wrap(ctx, I18n.t("receipt.rest"), W - PAD * 2).forEach(function (l) {
         y += 20;
         text(l, PAD, y, "13px " + FONT.body, COLOR.soft);
       });
@@ -131,8 +128,8 @@ var Receipt = (function () {
     y += 16;
     if (draw) dashed(ctx, y);
     y += 30;
-    text("合计", PAD, y, "15px " + FONT.cute, COLOR.ink);
-    text(info.wins.length + " 件", W - PAD, y, "22px " + FONT.cute, COLOR.berry, "right");
+    text(I18n.t("receipt.total"), PAD, y, "15px " + FONT.cute, COLOR.ink);
+    text(I18n.t("receipt.count", { n: info.wins.length }), W - PAD, y, "22px " + FONT.cute, COLOR.berry, "right");
     y += 16;
     if (draw) dashed(ctx, y);
 
@@ -182,15 +179,19 @@ var Receipt = (function () {
 
   function collect() {
     var now = new Date();
+    var cheers = I18n.t("receipt.cheers");
     return {
       dayKey: Store.dayKey(now),
-      dateText: now.getFullYear() + " 年 " + (now.getMonth() + 1) + " 月 " + now.getDate() + " 日  " + WEEK[now.getDay()],
+      dateText: I18n.t("receipt.date", {
+        y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate(),
+        mon: (I18n.t("months") || [])[now.getMonth()], w: I18n.t("week")[now.getDay()]
+      }),
       printedAt: pad2(now.getHours()) + ":" + pad2(now.getMinutes()),
       wins: Store.winsOf().map(function (w) {
         var d = new Date(w.doneAt);
         return { text: w.text, time: pad2(d.getHours()) + ":" + pad2(d.getMinutes()) };
       }),
-      cheer: Store.winsOf().length ? CHEERS[Math.floor(Math.random() * CHEERS.length)] : "明天见，小岛会一直在这里。"
+      cheer: Store.winsOf().length ? cheers[Math.floor(Math.random() * cheers.length)] : I18n.t("receipt.bye")
     };
   }
 
@@ -218,7 +219,7 @@ var Receipt = (function () {
     modal.hidden = false;
     document.body.classList.add("has-modal");
     $("printer").classList.add("is-printing");
-    $("printer-status").textContent = "正在打印……";
+    $("printer-status").textContent = I18n.t("printer.printing");
 
     fontsReady().then(function () {
       Store.markEnded();
@@ -238,7 +239,7 @@ var Receipt = (function () {
 
       setTimeout(function () {
         $("printer").classList.remove("is-printing");
-        $("printer-status").textContent = "打印好啦";
+        $("printer-status").textContent = I18n.t("printer.ready");
         actions.hidden = false;
         $("receipt-save").focus();
       }, dur + 150);
@@ -271,7 +272,7 @@ var Receipt = (function () {
     } else {
       download(currentCanvas.toDataURL("image/png"));
     }
-    $("printer-status").textContent = "已保存到「下载」文件夹";
+    $("printer-status").textContent = I18n.t("printer.saved");
   }
 
   function init() {

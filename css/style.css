@@ -153,6 +153,12 @@ button { font: inherit; color: inherit; }
   transition: transform .15s steps(2);
 }
 .tab:hover { transform: translateY(-2px); color: var(--ink); }
+
+/* 中 / EN 切换 */
+.lang-toggle { font-family: var(--font-pixel); font-size: 15px; letter-spacing: .04em; }
+.lang-toggle [data-lang] { opacity: .45; }
+.lang-toggle .is-current { opacity: 1; color: var(--berry); font-weight: 600; }
+.lang-sep { margin: 0 4px; opacity: .35; }
 .tab.is-active { background: var(--parchment); color: var(--ink); }
 .tab.is-active::after {
   content: "";

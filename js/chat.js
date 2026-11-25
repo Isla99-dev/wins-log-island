@@ -11,8 +11,6 @@ var Chat = (function () {
   var $ = function (id) { return document.getElementById(id); };
   var log, input, history;
 
-  var GREETING = "嗨，我是住在岛上的小助手 🌱 告诉我今天想做什么，或者已经做完了什么，我帮你整理成清单。";
-
   function save() { Store.saveChat(history); }
 
   function scrollDown() { log.scrollTop = log.scrollHeight; }
@@ -23,7 +21,10 @@ var Chat = (function () {
     wrap.className = "msg " + (msg.role === "user" ? "msg--me" : "msg--ai");
     var bubble = document.createElement("div");
     bubble.className = "msg-bubble";
-    bubble.textContent = msg.text;
+    // 开场白跟着当前语言显示；其他消息保持当时说的样子
+    // （第 8 步之前存下的开场白没有 greeting 标记，按开头文字认出来）
+    var isGreeting = msg.greeting || (index === 0 && msg.role === "assistant" && /^嗨，我是住在岛上的小助手/.test(msg.text));
+    bubble.textContent = isGreeting ? I18n.t("chat.greeting") : msg.text;
     wrap.appendChild(bubble);
     if (msg.plan) wrap.appendChild(renderPlan(msg, index));
     if (msg.quickReplies && msg.quickReplies.length) {
@@ -72,16 +73,17 @@ var Chat = (function () {
     foot.className = "plan-foot";
     if (plan.applied) {
       foot.innerHTML = '<span class="plan-done"></span>';
-      foot.firstChild.textContent = {
-        todo: "✓ 已种下 " + plan.appliedCount + " 件",
-        done: "✓ 已划掉 " + plan.appliedCount + " 件",
-        split: plan.replaced ? "✓ 已换成 " + plan.appliedCount + " 个小步骤" : "✓ 已种下 " + plan.appliedCount + " 个小步骤"
+      var doneKey = {
+        todo: "plan.todoDone",
+        done: "plan.doneDone",
+        split: plan.replaced ? "plan.splitReplaced" : "plan.splitAdded"
       }[plan.mode];
+      foot.firstChild.textContent = I18n.t(doneKey, { n: plan.appliedCount });
     } else {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pixel-btn" + (plan.mode === "done" ? " pixel-btn--warm" : "");
-      btn.textContent = { todo: "🌱 种到田里", done: "✨ 全部划掉", split: "✂ 换成这几步" }[plan.mode];
+      btn.textContent = I18n.t("plan." + plan.mode);
       btn.addEventListener("click", function () { applyPlan(card, index); });
       foot.appendChild(btn);
     }
@@ -112,7 +114,7 @@ var Chat = (function () {
     var plan = history[index].plan;
     if (plan.applied) return;
     var chosen = plan.items.filter(function (it) { return it.checked !== false; });
-    if (!chosen.length) { hint("先勾选至少一件哦。"); return; }
+    if (!chosen.length) { hint(I18n.t("chat.pickOne")); return; }
     var texts = chosen.map(function (it) { return it.text; });
 
     plan.applied = true;
@@ -168,12 +170,15 @@ var Chat = (function () {
 
     var typing = document.createElement("div");
     typing.className = "msg msg--ai";
-    typing.innerHTML = '<div class="msg-bubble typing" aria-label="小助手正在输入"><i></i><i></i><i></i></div>';
+    typing.innerHTML = '<div class="msg-bubble typing"><i></i><i></i><i></i></div>';
+    typing.firstChild.setAttribute("aria-label", I18n.t("chat.typing"));
     log.appendChild(typing);
     scrollDown();
 
     var messages = history.map(function (m) { return { role: m.role, text: m.text, flow: m.flow || null }; });
-    AI.chat(messages, Tasks.todayTexts())
+    var context = Tasks.todayTexts();
+    context.lang = I18n.lang();
+    AI.chat(messages, context)
       .then(function (res) {
         var msg = { role: "assistant", text: res.reply, t: Date.now() };
         if (res.plan && res.plan.items && res.plan.items.length) {
@@ -188,7 +193,7 @@ var Chat = (function () {
         return msg;
       })
       .catch(function () {
-        return { role: "assistant", text: "哎呀，我刚刚走神了，可以再说一次吗？", t: Date.now() };
+        return { role: "assistant", text: I18n.t("chat.oops"), t: Date.now() };
       })
       .then(function (msg) {
         typing.remove();
@@ -204,7 +209,7 @@ var Chat = (function () {
     var el = $("chat-hint");
     el.textContent = text;
     clearTimeout(hint.timer);
-    hint.timer = setTimeout(function () { el.textContent = "可以打字，也可以点 🎙 用说的。"; }, 4000);
+    hint.timer = setTimeout(function () { el.textContent = I18n.t("chat.hint"); }, 4000);
   }
 
   // ---------- 语音输入 ----------
@@ -214,13 +219,13 @@ var Chat = (function () {
   function toggleMic() {
     var mic = $("chat-mic");
     if (!Recognition) {
-      hint("这个浏览器暂时不支持语音输入，可以换 Chrome 或 Safari 试试，或者直接打字。");
+      hint(I18n.t("mic.unsupported"));
       return;
     }
     if (listening) { rec.stop(); return; }
 
     rec = new Recognition();
-    rec.lang = "zh-CN";
+    rec.lang = I18n.t("mic.lang");
     rec.interimResults = true;
     rec.continuous = false;
     var finalText = "";
@@ -228,8 +233,8 @@ var Chat = (function () {
     rec.onstart = function () {
       listening = true;
       mic.classList.add("is-listening");
-      mic.setAttribute("aria-label", "停止语音输入");
-      hint("我在听…说完再点一下 🎙，或者停一下就好。");
+      mic.setAttribute("aria-label", I18n.t("chat.micStop"));
+      hint(I18n.t("mic.listening"));
     };
     rec.onresult = function (e) {
       var interim = "";
@@ -240,25 +245,25 @@ var Chat = (function () {
       input.value = finalText + interim;
     };
     rec.onerror = function (e) {
-      var msg = {
-        "not-allowed": "没有拿到麦克风权限。可以在浏览器地址栏左边允许使用麦克风，再试一次。",
-        "service-not-allowed": "没有拿到麦克风权限。可以在浏览器设置里允许使用麦克风，再试一次。",
-        "no-speech": "好像没听到声音，再试一次？",
-        "network": "语音识别需要联网，检查一下网络再试试。",
-        "audio-capture": "没找到麦克风，检查一下设备再试试。"
+      var key = {
+        "not-allowed": "mic.notAllowed",
+        "service-not-allowed": "mic.serviceNotAllowed",
+        "no-speech": "mic.noSpeech",
+        "network": "mic.network",
+        "audio-capture": "mic.audioCapture"
       }[e.error];
-      hint(msg || "语音输入出了点问题，先打字也可以。");
+      hint(I18n.t(key || "mic.other"));
     };
     rec.onend = function () {
       listening = false;
       mic.classList.remove("is-listening");
-      mic.setAttribute("aria-label", "语音输入");
+      mic.setAttribute("aria-label", I18n.t("chat.mic"));
       if (finalText.trim()) {
         input.value = "";
         send(finalText);
       }
     };
-    try { rec.start(); } catch (err) { hint("语音输入没能启动，先打字也可以。"); }
+    try { rec.start(); } catch (err) { hint(I18n.t("mic.startFailed")); }
   }
 
   // ---------- 初始化 ----------
@@ -267,7 +272,7 @@ var Chat = (function () {
     input = $("chat-input");
     history = Store.getChat();
     if (!history.length) {
-      history.push({ role: "assistant", text: GREETING, t: Date.now() });
+      history.push({ role: "assistant", greeting: true, text: I18n.t("chat.greeting"), t: Date.now() });
       save();
     }
     renderAll();
@@ -293,9 +298,10 @@ var Chat = (function () {
     $("chat-chips").addEventListener("click", function (e) {
       var chip = e.target.closest(".chip");
       if (!chip) return;
-      var fill = chip.dataset.fill;
+      var kind = chip.dataset.chip;
+      var fill = I18n.t("chip." + kind + "Fill");
       // 「有点不想动」直接发出去；其他的放进输入框，等你接着写
-      if (fill === "有点不想动") { send(fill); return; }
+      if (kind === "stuck") { send(fill); return; }
       input.value = fill;
       input.focus();
       input.setSelectionRange(fill.length, fill.length);

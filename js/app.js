@@ -1,12 +1,22 @@
-/* 页面主逻辑：日期、切换页面，并启动各个模块 */
+/* 页面主逻辑：日期、切换页面和语言，并启动各个模块 */
 (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 
   // ---- 日期 ----
   var now = new Date();
-  $("date-main").textContent = now.getFullYear() + "." + (now.getMonth() + 1) + "." + now.getDate();
-  $("date-week").textContent = WEEK[now.getDay()];
+  if (I18n.isEn()) {
+    $("date-main").textContent = now.getDate() + " " + I18n.t("months")[now.getMonth()] + " " + now.getFullYear();
+  } else {
+    $("date-main").textContent = now.getFullYear() + "." + (now.getMonth() + 1) + "." + now.getDate();
+  }
+  $("date-week").textContent = I18n.t("week")[now.getDay()];
+
+  // ---- 语言切换：中 / EN ----
+  var toggle = $("lang-toggle");
+  toggle.querySelector('[data-lang="' + I18n.lang() + '"]').classList.add("is-current");
+  toggle.addEventListener("click", function () {
+    I18n.set(I18n.isEn() ? "zh" : "en");
+  });
 
   // ---- 旧版数据导入 ----
   Store.importV1();
@@ -24,7 +34,7 @@
   WorldMap.init();
 
   // ---- 切换 小岛 / 世界地图 ----
-  var tabs = document.querySelectorAll(".tab");
+  var tabs = document.querySelectorAll(".tab[data-view]");
   tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
       var view = tab.dataset.view;

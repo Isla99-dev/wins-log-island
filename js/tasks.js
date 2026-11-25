@@ -34,10 +34,14 @@ var Tasks = (function () {
     li.innerHTML =
       '<button class="check" type="button"></button>' +
       '<span class="text"></span>' +
-      '<button class="mini-btn split" type="button" aria-label="请小助手拆小一点" title="太大了？让小助手拆小一点">✂</button>' +
-      '<button class="mini-btn del" type="button" aria-label="删除这条">×</button>';
+      '<button class="mini-btn split" type="button">✂</button>' +
+      '<button class="mini-btn del" type="button">×</button>';
     li.querySelector(".text").textContent = t.text;
-    li.querySelector(".check").setAttribute("aria-label", "完成：" + t.text);
+    li.querySelector(".check").setAttribute("aria-label", I18n.t("tasks.completeAria", { text: t.text }));
+    var split = li.querySelector(".split");
+    split.setAttribute("aria-label", I18n.t("tasks.splitAria"));
+    split.title = I18n.t("tasks.splitTitle");
+    li.querySelector(".del").setAttribute("aria-label", I18n.t("tasks.deleteAria"));
     return li;
   }
 
@@ -50,7 +54,8 @@ var Tasks = (function () {
       li.dataset.id = w.id;
       if (newIds && newIds.indexOf(w.id) >= 0) li.className = "is-new";
       li.innerHTML = STAR + '<span class="text"></span><span class="time"></span>' +
-        '<button class="mini-btn undo" type="button" aria-label="撤回，放回任务">↩</button>';
+        '<button class="mini-btn undo" type="button">↩</button>';
+      li.querySelector(".undo").setAttribute("aria-label", I18n.t("wins.undoAria"));
       li.querySelector(".text").textContent = w.text;
       li.querySelector(".time").textContent = hhmm(w.doneAt);
       winsEl.appendChild(li);
@@ -189,8 +194,12 @@ var Tasks = (function () {
     return ids.length;
   }
 
-  // 比较两件事是不是同一件：忽略空格、标点和“了”
-  function norm(s) { return String(s).replace(/[\s，,。.！!了]/g, "").toLowerCase(); }
+  // 比较两件事是不是同一件：忽略空格、标点、“了”，以及英文里常见的 the / my / a
+  function norm(s) {
+    return String(s).toLowerCase()
+      .replace(/\b(the|my|a|an)\b/g, "")
+      .replace(/[\s，,。.！!了'"]/g, "");
+  }
 
   // 记下几件做完的事：和已有任务意思一样的就直接完成它，没有的就新建再完成
   function recordDone(texts) {
@@ -250,7 +259,7 @@ var Tasks = (function () {
       if (e.target.closest(".del")) remove(li);
       else if (e.target.closest(".split")) {
         var text = li.querySelector(".text").textContent;
-        document.dispatchEvent(new CustomEvent("wins:ask", { detail: { text: "帮我把「" + text + "」拆小一点" } }));
+        document.dispatchEvent(new CustomEvent("wins:ask", { detail: { text: I18n.t("tasks.splitRequest", { text: text }) } }));
       }
       else complete(li);
     });

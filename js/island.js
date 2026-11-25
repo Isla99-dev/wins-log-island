@@ -15,9 +15,9 @@ var Island = (function () {
   var SAND = { cx: 64, cy: 41, rx: 49, ry: 27 };
   var FOAM = { cx: 64, cy: 41, rx: 51, ry: 29 };
   var MILESTONES = [
-    { at: 15, name: "温馨小屋" },
-    { at: 30, name: "小码头和小船" },
-    { at: 60, name: "海上灯塔" }
+    { at: 15, name: "island.m15" },   // 温馨小屋
+    { at: 30, name: "island.m30" },   // 小码头和小船
+    { at: 60, name: "island.m60" }    // 海上灯塔
   ];
 
   var C = {
@@ -517,17 +517,21 @@ var Island = (function () {
     if (!el) return;
     var next = null;
     for (var i = 0; i < MILESTONES.length; i++) if (winTotal < MILESTONES[i].at) { next = MILESTONES[i]; break; }
-    var text = winTotal === 0
-      ? "完成第一件事，岛上就会长出第一样东西。"
-      : "小岛上已经长出 " + winTotal + " 样东西。";
-    if (next) text += "再完成 " + (next.at - winTotal) + " 件，会出现" + next.name + "。";
-    else text += "小岛已经很热闹啦，继续让它更茂盛吧。";
+    var text = winTotal === 0 ? I18n.t("island.zero")
+      : winTotal === 1 ? I18n.t("island.countOne")
+      : I18n.t("island.count", { n: winTotal });
+    if (next) {
+      if (winTotal > 0) text += I18n.t("island.next", { n: next.at - winTotal, name: I18n.t(next.name) });
+    } else {
+      text += I18n.t("island.full");
+    }
     el.textContent = text;
   }
 
   function fmtDay(t) {
     var d = new Date(t);
-    return (d.getMonth() + 1) + " 月 " + d.getDate() + " 日";
+    var months = I18n.t("months");
+    return I18n.t("island.date", { m: d.getMonth() + 1, d: d.getDate(), mon: Array.isArray(months) ? months[d.getMonth()] : "" });
   }
 
   function hitTest(lx, ly) {
@@ -535,7 +539,7 @@ var Island = (function () {
     for (var i = 0; i < crops.length; i++) {
       var c = crops[i];
       if (c && lx >= c.plot.x && lx < c.plot.x + c.plot.w && ly >= c.plot.y - 2 && ly < c.plot.y + c.plot.h) {
-        return c.task.doneAt ? "🌾 " + c.task.text + "（今天完成）" : "🌱 " + c.task.text + "（还在长）";
+        return I18n.t(c.task.doneAt ? "island.tipDone" : "island.tipGrowing", { text: c.task.text });
       }
     }
     var sorted = items.slice().sort(function (a, b) { return b.base - a.base; });
@@ -543,7 +547,7 @@ var Island = (function () {
       var it = sorted[j];
       if (it.id === hiddenId) continue;
       if (lx >= it.x - 1 && lx <= it.x + it.w && ly >= it.y - 1 && ly <= it.base) {
-        return "⭐ " + it.text + " · " + fmtDay(it.doneAt);
+        return I18n.t("island.tipItem", { text: it.text, date: fmtDay(it.doneAt) });
       }
     }
     return null;

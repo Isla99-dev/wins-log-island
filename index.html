@@ -14,17 +14,20 @@
 <header class="topbar">
   <div class="brand plank">
     <svg class="brand-star" viewBox="0 0 7 7" aria-hidden="true"><use href="#px-star"/></svg>
-    <h1><span class="latin">Wins Log</span><span class="cn">小岛</span></h1>
+    <h1><span class="latin">Wins Log</span><span class="cn" data-i18n="brand.island">小岛</span></h1>
   </div>
 
-  <div class="date-sign plank" aria-label="今天的日期">
+  <div class="date-sign plank" data-i18n-aria="date.aria">
     <span class="date-main" id="date-main"></span>
     <span class="date-week" id="date-week"></span>
   </div>
 
-  <nav class="tabs" aria-label="切换页面">
-    <button class="tab is-active" data-view="island" type="button">🏝 我的小岛</button>
-    <button class="tab" data-view="map" type="button">🗺 世界地图</button>
+  <nav class="tabs" data-i18n-aria="tabs.aria">
+    <button class="tab is-active" data-view="island" type="button" data-i18n="tab.island">🏝 我的小岛</button>
+    <button class="tab" data-view="map" type="button" data-i18n="tab.map">🗺 世界地图</button>
+    <button class="tab lang-toggle" id="lang-toggle" type="button" data-i18n-aria="lang.aria">
+      <span data-lang="zh">中</span><span class="lang-sep">/</span><span data-lang="en">EN</span>
+    </button>
   </nav>
 </header>
 
@@ -32,34 +35,34 @@
 <main class="view view-island" id="view-island">
 
   <section class="panel tasks" aria-labelledby="tasks-title">
-    <h2 id="tasks-title" class="panel-title">今日任务</h2>
+    <h2 id="tasks-title" class="panel-title" data-i18n="tasks.title">今日任务</h2>
 
     <form class="task-entry" id="task-form" autocomplete="off">
-      <input type="text" id="task-input" maxlength="200" placeholder="写下今天想做的一件事…" aria-label="新任务">
-      <button class="pixel-btn" type="submit">种下</button>
+      <input type="text" id="task-input" maxlength="200" data-i18n-placeholder="tasks.placeholder" data-i18n-aria="tasks.inputAria">
+      <button class="pixel-btn" type="submit" data-i18n="tasks.add">种下</button>
     </form>
 
     <ul class="todo" id="todo"></ul>
-    <p class="empty" id="todo-empty">今天还没有任务。写下一件小事，按回车就好。</p>
+    <p class="empty" id="todo-empty" data-i18n="tasks.empty"></p>
 
     <div class="divider" aria-hidden="true"></div>
 
     <h3 class="sub-title">
-      今天的 Wins
-      <span class="count-badge"><b id="win-count">0</b> 件</span>
+      <span data-i18n="wins.title">今天的 Wins</span>
+      <span class="count-badge"><b id="win-count">0</b> <span data-i18n="wins.unit">件</span></span>
     </h3>
     <ol class="wins" id="wins"></ol>
-    <p class="empty" id="wins-empty">还没有记录。完成一件小事，就会出现在这里。</p>
+    <p class="empty" id="wins-empty" data-i18n="wins.empty"></p>
 
     <div class="panel-foot">
-      <button class="pixel-btn pixel-btn--warm" id="end-day" type="button">🖨 结束今天</button>
+      <button class="pixel-btn pixel-btn--warm" id="end-day" type="button" data-i18n="endDay">🖨 结束今天</button>
     </div>
   </section>
 
   <section class="panel island" aria-labelledby="island-title">
-    <h2 id="island-title" class="panel-title">我的小岛</h2>
+    <h2 id="island-title" class="panel-title" data-i18n="island.title">我的小岛</h2>
     <div class="island-frame">
-      <canvas id="island" width="128" height="80" aria-label="像素小岛：今天的任务种在田里，完成过的事都长在岛上"></canvas>
+      <canvas id="island" width="128" height="80" data-i18n-aria="island.aria"></canvas>
       <div class="island-tip" id="island-tip" hidden></div>
     </div>
     <p class="caption" id="island-caption" aria-live="polite"></p>
@@ -67,24 +70,24 @@
 
   <section class="panel helper" aria-labelledby="helper-title">
     <div class="helper-head">
-      <h2 id="helper-title" class="panel-title">小岛助手</h2>
-      <span class="mode-tag" id="ai-mode" title="现在是模拟回复，以后会接入真正的 AI">练习模式</span>
+      <h2 id="helper-title" class="panel-title" data-i18n="helper.title">小岛助手</h2>
+      <span class="mode-tag" id="ai-mode" data-i18n="helper.mode" data-i18n-title="helper.modeTitle">练习模式</span>
     </div>
 
     <div class="chat-log" id="chat-log" aria-live="polite"></div>
 
     <div class="chips" id="chat-chips">
-      <button type="button" class="chip" data-fill="今天想做：">🌱 今天想做…</button>
-      <button type="button" class="chip" data-fill="我已经做完了：">✨ 我已经做完了…</button>
-      <button type="button" class="chip" data-fill="有点不想动">🫠 有点不想动</button>
+      <button type="button" class="chip" data-chip="plan" data-i18n="chip.plan"></button>
+      <button type="button" class="chip" data-chip="done" data-i18n="chip.done"></button>
+      <button type="button" class="chip" data-chip="stuck" data-i18n="chip.stuck"></button>
     </div>
 
     <form class="task-entry chat-entry" id="chat-form" autocomplete="off">
-      <input type="text" id="chat-input" maxlength="300" placeholder="跟小助手说点什么…" aria-label="和小助手聊天">
-      <button class="pixel-btn pixel-btn--icon" id="chat-mic" type="button" aria-label="语音输入" title="点一下开始说，再点一下结束">🎙</button>
-      <button class="pixel-btn" type="submit">发送</button>
+      <input type="text" id="chat-input" maxlength="300" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.inputAria">
+      <button class="pixel-btn pixel-btn--icon" id="chat-mic" type="button" data-i18n-aria="chat.mic" data-i18n-title="chat.micTitle">🎙</button>
+      <button class="pixel-btn" type="submit" data-i18n="chat.send">发送</button>
     </form>
-    <p class="soon" id="chat-hint">可以打字，也可以点 🎙 用说的。</p>
+    <p class="soon" id="chat-hint" data-i18n="chat.hint"></p>
   </section>
 
 </main>
@@ -93,10 +96,10 @@
 <main class="view view-map" id="view-map" hidden>
   <section class="panel map-panel" aria-labelledby="map-title">
     <div class="helper-head">
-      <h2 id="map-title" class="panel-title">世界地图</h2>
-      <span class="mode-tag" title="现在是示例留言，以后会接入真实用户">示例留言</span>
+      <h2 id="map-title" class="panel-title" data-i18n="map.title">世界地图</h2>
+      <span class="mode-tag" data-i18n="map.tag" data-i18n-title="map.tagTitle">示例留言</span>
     </div>
-    <p class="map-intro">鼠标移到城市上，看看那里的人今天想做什么。星星是你的小岛。</p>
+    <p class="map-intro" data-i18n="map.intro"></p>
     <div class="world-frame">
       <div class="world-wrap" id="world-wrap">
         <canvas id="world" width="160" height="80" aria-hidden="true"></canvas>
@@ -122,13 +125,13 @@
     <div class="receipt-slot" id="receipt-slot"></div>
     <p class="printer-status" id="printer-status" aria-live="polite"></p>
     <div class="printer-actions" id="printer-actions" hidden>
-      <button class="pixel-btn" id="receipt-save" type="button">💾 保存成图片</button>
-      <button class="pixel-btn pixel-btn--icon" id="receipt-close" type="button">关闭</button>
+      <button class="pixel-btn" id="receipt-save" type="button" data-i18n="printer.save">💾 保存成图片</button>
+      <button class="pixel-btn pixel-btn--icon" id="receipt-close" type="button" data-i18n="printer.close">关闭</button>
     </div>
   </div>
 </div>
 
-<footer class="footnote">数据只保存在这台电脑的浏览器里</footer>
+<footer class="footnote" data-i18n="footnote"></footer>
 
 <!-- 共用像素小图标 -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -137,6 +140,7 @@
   </symbol>
 </svg>
 
+<script src="js/i18n.js"></script>
 <script src="js/store.js"></script>
 <script src="js/island.js"></script>
 <script src="js/tasks.js"></script>

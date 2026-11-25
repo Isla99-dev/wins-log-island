@@ -222,7 +222,7 @@ var WorldMap = (function () {
   var HOME_SVG =
     '<svg class="city-icon" viewBox="0 0 7 7" aria-hidden="true"><use href="#px-star"/></svg>';
 
-  function lang() { return document.documentElement.lang && document.documentElement.lang.indexOf("en") === 0 ? "en" : "zh"; }
+  function lang() { return I18n.lang(); }
 
   function addMarker(opts) {
     var p = toXY(opts.lon, opts.lat);
@@ -233,7 +233,7 @@ var WorldMap = (function () {
     btn.style.top = (p[1] / H * 100) + "%";
     btn.innerHTML = (opts.me ? HOME_SVG : CITY_SVG) + '<span class="city-name"></span>';
     btn.querySelector(".city-name").textContent = opts.name;
-    btn.setAttribute("aria-label", opts.name + "：看看大家今天想做什么");
+    btn.setAttribute("aria-label", I18n.t("map.cityAria", { name: opts.name }));
     btn.dataset.id = opts.id;
     wrap.appendChild(btn);
     return btn;
@@ -254,10 +254,10 @@ var WorldMap = (function () {
   function notesFor(id) {
     var L = lang();
     if (id === "me") {
-      var todos = Store.todosOf(), wins = Store.winsOf();
-      var mine = wins.map(function (w) { return { text: (L === "en" ? "✓ Done: " : "✓ 做完了：") + w.text, who: L === "en" ? "me" : "我" }; })
-        .concat(todos.map(function (t) { return { text: (L === "en" ? "Today: " : "今天想：") + t.text, who: L === "en" ? "me" : "我" }; }));
-      if (!mine.length) mine = [{ text: L === "en" ? "Nothing written yet today. Add something small!" : "今天还没写下想做的事，写一件小事吧～", who: L === "en" ? "Island" : "小岛" }];
+      var todos = Store.todosOf(), wins = Store.winsOf(), me = I18n.t("map.me");
+      var mine = wins.map(function (w) { return { text: I18n.t("map.meDone", { text: w.text }), who: me }; })
+        .concat(todos.map(function (t) { return { text: I18n.t("map.meTodo", { text: t.text }), who: me }; }));
+      if (!mine.length) mine = [{ text: I18n.t("map.meEmpty"), who: I18n.t("map.island") }];
       return mine.slice(-3).reverse();
     }
     var pool = shuffle(SAMPLE_NOTES[id] || []);
@@ -345,7 +345,7 @@ var WorldMap = (function () {
 
     var L = lang();
     CITIES.forEach(function (c) { addMarker({ id: c.id, name: L === "en" ? c.en : c.zh, lon: c.lon, lat: c.lat }); });
-    addMarker({ id: "me", me: true, name: L === "en" ? "My island" : "我的小岛", lon: MY_ISLAND.lon, lat: MY_ISLAND.lat });
+    addMarker({ id: "me", me: true, name: I18n.t("map.myIsland"), lon: MY_ISLAND.lon, lat: MY_ISLAND.lat });
 
     wrap.addEventListener("mouseover", function (e) {
       var btn = e.target.closest(".city");
