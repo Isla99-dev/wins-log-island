@@ -34,11 +34,13 @@
   <section class="panel tasks" aria-labelledby="tasks-title">
     <h2 id="tasks-title" class="panel-title">今日任务</h2>
 
-    <form class="task-entry" onsubmit="return false">
-      <input type="text" disabled placeholder="写下今天想做的一件事…" aria-label="新任务">
-      <button class="pixel-btn" type="button" disabled>种下</button>
+    <form class="task-entry" id="task-form" autocomplete="off">
+      <input type="text" id="task-input" maxlength="200" placeholder="写下今天想做的一件事…" aria-label="新任务">
+      <button class="pixel-btn" type="submit">种下</button>
     </form>
-    <p class="soon">✎ 添加和完成任务会在第 2 步开放</p>
+
+    <ul class="todo" id="todo"></ul>
+    <p class="empty" id="todo-empty">今天还没有任务。写下一件小事，按回车就好。</p>
 
     <div class="divider" aria-hidden="true"></div>
 
@@ -98,6 +100,7 @@
 
 <script src="js/store.js"></script>
 <script src="js/island.js"></script>
+<script src="js/tasks.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

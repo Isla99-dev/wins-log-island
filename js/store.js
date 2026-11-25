@@ -71,13 +71,53 @@ var Store = (function () {
     return added;
   }
 
+  function newId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function find(id) {
+    var tasks = getDay().tasks;
+    for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) return tasks[i];
+    return null;
+  }
+
   return {
     dayKey: dayKey,
     getDay: getDay,
     save: save,
     importV1: importV1,
+
+    // 今天还没完成的任务（按添加顺序）
+    todosOf: function (key) {
+      return getDay(key).tasks.filter(function (t) { return !t.doneAt; });
+    },
+    // 今天已完成的（按完成时间排序）
     winsOf: function (key) {
-      return getDay(key).tasks.filter(function (t) { return t.doneAt; });
+      return getDay(key).tasks
+        .filter(function (t) { return t.doneAt; })
+        .sort(function (a, b) { return a.doneAt - b.doneAt; });
+    },
+
+    addTask: function (text) {
+      var task = { id: newId(), text: String(text).slice(0, 200), createdAt: Date.now(), doneAt: null };
+      getDay().tasks.push(task);
+      save();
+      return task;
+    },
+    completeTask: function (id) {
+      var t = find(id);
+      if (t && !t.doneAt) { t.doneAt = Date.now(); save(); }
+      return t;
+    },
+    uncompleteTask: function (id) {
+      var t = find(id);
+      if (t) { t.doneAt = null; save(); }
+      return t;
+    },
+    removeTask: function (id) {
+      var day = getDay();
+      day.tasks = day.tasks.filter(function (t) { return t.id !== id; });
+      save();
     }
   };
 })();

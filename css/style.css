@@ -266,6 +266,127 @@ button { font: inherit; color: inherit; }
 }
 .wins .text { flex: 1; word-break: break-word; }
 .wins .time { font-family: var(--font-cute); font-size: 13px; color: var(--ink-soft); }
+.wins li.is-new { animation: drop-in .5s steps(5) both; }
+.wins li.is-new svg { animation: spark-pop-in .7s steps(6) both; }
+@keyframes spark-pop-in {
+  0%   { transform: scale(0) rotate(-45deg); }
+  60%  { transform: scale(1.6) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.count-badge.bump { animation: bump .45s steps(4); }
+@keyframes bump {
+  50% { transform: scale(1.25) translateY(-2px); }
+}
+
+@media (hover: none) {
+  .mini-btn { opacity: .45; }
+}
+
+/* ---------- 今日任务列表 ---------- */
+.todo { list-style: none; margin-top: 14px; }
+.todo li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: transform .2s steps(2), height .3s ease, opacity .3s ease, padding .3s ease;
+}
+.todo li:hover { transform: translateY(-2px); }
+.todo li.is-new { animation: drop-in .45s steps(5) both; }
+.todo .text { flex: 1; word-break: break-word; transition: color .4s; }
+.todo li.is-done { cursor: default; }
+.todo li.is-done .text { color: var(--ink-soft); }
+.todo li.is-done .del { visibility: hidden; }
+.todo li.is-leaving {
+  height: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* 像素小方框 */
+.check {
+  flex: none;
+  width: 18px; height: 18px;
+  margin: 4px 2px 0;
+  border: 0;
+  cursor: pointer;
+  background: #fffaf0;
+  box-shadow:
+    0 -2px 0 0 var(--wood-dark), 0 2px 0 0 var(--wood-dark),
+    -2px 0 0 0 var(--wood-dark), 2px 0 0 0 var(--wood-dark);
+  position: relative;
+}
+.check::after { /* 鼠标移上去时，框里出现一颗淡淡的星 */
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--star);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+  transition: opacity .15s;
+}
+.todo li:hover .check::after { opacity: .45; }
+.todo li.is-done .check::after { opacity: 1; }
+.check:focus-visible { outline: 2px dashed var(--berry); outline-offset: 4px; }
+
+.mini-btn {
+  flex: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity .2s, color .2s;
+}
+li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
+.mini-btn:hover { color: var(--berry); opacity: 1; }
+
+/* 手写感划线 */
+.strike {
+  position: absolute;
+  left: 0; top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.strike path {
+  fill: none;
+  stroke: var(--berry);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes strike-draw { to { stroke-dashoffset: 0; } }
+
+/* 弹出的小星星 */
+.spark {
+  position: absolute;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  color: var(--star);
+  pointer-events: none;
+  filter: drop-shadow(1px 1px 0 var(--wood-dark));
+  animation: spark-pop .8s steps(8) both;
+}
+.spark--small { width: 9px; height: 9px; margin: -4px 0 0 -4px; }
+.spark svg { display: block; width: 100%; height: 100%; }
+@keyframes spark-pop {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.2); }
+  25%  { opacity: 1; transform: translate(calc(var(--dx) * .7), calc(var(--dy) * .7)) scale(1.2); }
+  70%  { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) - 6px)) scale(.6); }
+}
+
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
 
 .empty {
   margin-top: 12px;

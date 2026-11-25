@@ -1,4 +1,4 @@
-/* 页面主逻辑（第 1 步：日期、切换页面、显示今天的 Wins） */
+/* 页面主逻辑：日期、切换页面，并启动各个模块 */
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
@@ -11,26 +11,8 @@
   // ---- 旧版数据导入 ----
   Store.importV1();
 
-  // ---- 今天的 Wins ----
-  function pad(n) { return String(n).padStart(2, "0"); }
-
-  function renderWins() {
-    var wins = Store.winsOf();
-    var list = $("wins");
-    list.innerHTML = "";
-    wins.forEach(function (w) {
-      var li = document.createElement("li");
-      li.innerHTML = '<svg viewBox="0 0 7 7" aria-hidden="true"><use href="#px-star"/></svg>' +
-        '<span class="text"></span><span class="time"></span>';
-      li.querySelector(".text").textContent = w.text;
-      var d = new Date(w.doneAt);
-      li.querySelector(".time").textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
-      list.appendChild(li);
-    });
-    $("win-count").textContent = wins.length;
-    $("wins-empty").hidden = wins.length > 0;
-  }
-  renderWins();
+  // ---- 今日任务 & 今天的 Wins ----
+  Tasks.init();
 
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab");
