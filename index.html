@@ -66,16 +66,25 @@
   </section>
 
   <section class="panel helper" aria-labelledby="helper-title">
-    <h2 id="helper-title" class="panel-title">小岛助手</h2>
-    <div class="bubble">
-      嗨，我是住在岛上的小助手。<br>
-      以后你可以跟我说今天想做什么，或者告诉我你有点不想动——我们一起找到最小的第一步。
+    <div class="helper-head">
+      <h2 id="helper-title" class="panel-title">小岛助手</h2>
+      <span class="mode-tag" id="ai-mode" title="现在是模拟回复，以后会接入真正的 AI">练习模式</span>
     </div>
-    <form class="task-entry" onsubmit="return false">
-      <input type="text" disabled placeholder="跟小助手说点什么…" aria-label="和小助手聊天">
-      <button class="pixel-btn pixel-btn--icon" type="button" disabled aria-label="语音输入">🎙</button>
+
+    <div class="chat-log" id="chat-log" aria-live="polite"></div>
+
+    <div class="chips" id="chat-chips">
+      <button type="button" class="chip" data-fill="今天想做：">🌱 今天想做…</button>
+      <button type="button" class="chip" data-fill="我已经做完了：">✨ 我已经做完了…</button>
+      <button type="button" class="chip" data-fill="有点不想动">🫠 有点不想动</button>
+    </div>
+
+    <form class="task-entry chat-entry" id="chat-form" autocomplete="off">
+      <input type="text" id="chat-input" maxlength="300" placeholder="跟小助手说点什么…" aria-label="和小助手聊天">
+      <button class="pixel-btn pixel-btn--icon" id="chat-mic" type="button" aria-label="语音输入" title="点一下开始说，再点一下结束">🎙</button>
+      <button class="pixel-btn" type="submit">发送</button>
     </form>
-    <p class="soon">✎ 聊天会在第 5 步开放，启动助手在第 6 步</p>
+    <p class="soon" id="chat-hint">可以打字，也可以点 🎙 用说的。</p>
   </section>
 
 </main>
@@ -123,6 +132,8 @@
 <script src="js/island.js"></script>
 <script src="js/tasks.js"></script>
 <script src="js/receipt.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

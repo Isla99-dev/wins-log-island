@@ -40,13 +40,14 @@ var Tasks = (function () {
     return li;
   }
 
-  function renderWins(newId) {
+  function renderWins(newIds) {
+    if (newIds && !Array.isArray(newIds)) newIds = [newIds];
     var wins = Store.winsOf();
     winsEl.innerHTML = "";
     wins.forEach(function (w) {
       var li = document.createElement("li");
       li.dataset.id = w.id;
-      if (w.id === newId) li.className = "is-new";
+      if (newIds && newIds.indexOf(w.id) >= 0) li.className = "is-new";
       li.innerHTML = STAR + '<span class="text"></span><span class="time"></span>' +
         '<button class="mini-btn undo" type="button" aria-label="撤回，放回任务">↩</button>';
       li.querySelector(".text").textContent = w.text;
@@ -56,7 +57,7 @@ var Tasks = (function () {
     var badge = $("win-count");
     badge.textContent = wins.length;
     $("wins-empty").hidden = wins.length > 0;
-    if (newId) {
+    if (newIds && newIds.length) {
       var wrap = badge.parentNode;
       wrap.classList.remove("bump");
       void wrap.offsetWidth; // 让动画可以重复播放
@@ -174,6 +175,41 @@ var Tasks = (function () {
     renderTodos();
   }
 
+  // ---------- 给小助手用的批量操作 ----------
+  // 把几件想做的事加进今日任务
+  function addMany(texts) {
+    var ids = texts.map(function (t) { return Store.addTask(t).id; });
+    renderTodos();
+    ids.forEach(function (id) {
+      var li = todoEl.querySelector('li[data-id="' + id + '"]');
+      if (li) li.classList.add("is-new");
+    });
+    ids.forEach(function (id) { announce("add", id); });
+    return ids.length;
+  }
+
+  // 比较两件事是不是同一件：忽略空格、标点和“了”
+  function norm(s) { return String(s).replace(/[\s，,。.！!了]/g, "").toLowerCase(); }
+
+  // 记下几件做完的事：和已有任务意思一样的就直接完成它，没有的就新建再完成
+  function recordDone(texts) {
+    var ids = [];
+    texts.forEach(function (text) {
+      var n = norm(text), match = null;
+      Store.todosOf().forEach(function (t) {
+        var m = norm(t.text);
+        if (!match && m.length >= 2 && (m.indexOf(n) >= 0 || n.indexOf(m) >= 0)) match = t;
+      });
+      var task = match || Store.addTask(text);
+      Store.completeTask(task.id);
+      ids.push(task.id);
+    });
+    renderTodos();
+    renderWins(ids);
+    ids.forEach(function (id) { announce("complete", id); });
+    return ids.length;
+  }
+
   function init() {
     todoEl = $("todo");
     winsEl = $("wins");
@@ -208,5 +244,15 @@ var Tasks = (function () {
     renderWins();
   }
 
-  return { init: init };
+  return {
+    init: init,
+    addMany: addMany,
+    recordDone: recordDone,
+    todayTexts: function () {
+      return {
+        todos: Store.todosOf().map(function (t) { return t.text; }),
+        wins: Store.winsOf().map(function (t) { return t.text; })
+      };
+    }
+  };
 })();

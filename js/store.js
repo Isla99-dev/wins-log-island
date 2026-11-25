@@ -123,6 +123,17 @@ var Store = (function () {
       if (t) { t.doneAt = null; save(); }
       return t;
     },
+    // 今天和小助手的聊天记录（只保留最近 60 条）
+    getChat: function () {
+      var day = getDay();
+      if (!day.chat) day.chat = [];
+      return day.chat;
+    },
+    saveChat: function (list) {
+      getDay().chat = list.slice(-60);
+      save();
+    },
+
     // 记下“结束今天”的时间（可以重复打印，以最后一次为准）
     markEnded: function () {
       getDay().endedAt = Date.now();

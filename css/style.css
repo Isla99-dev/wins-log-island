@@ -429,16 +429,118 @@ li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
 .island-tip[hidden] { display: none; }
 
 /* ---------- 小助手 ---------- */
-.bubble {
-  position: relative;
-  background: #fffaf0;
-  padding: 12px 16px;
-  margin: 0 var(--px) 18px;
+.helper-head { display: flex; align-items: center; gap: 12px; }
+.mode-tag {
+  margin-bottom: 12px;
+  font-size: 12px;
+  padding: 1px 8px 2px;
+  color: var(--wood-dark);
+  background: var(--parchment-deep);
+  box-shadow: 0 2px 0 0 var(--wood-light);
+  cursor: help;
+}
+
+.chat-log {
+  max-height: 340px;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 6px 6px 10px;
+  margin: 0 -6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood-light) transparent;
+}
+
+.msg { display: flex; flex-direction: column; max-width: 86%; animation: drop-in .35s steps(4) both; }
+.msg--ai { align-self: flex-start; }
+.msg--me { align-self: flex-end; align-items: flex-end; }
+.msg-bubble {
+  padding: 8px 13px 9px;
+  margin: 3px;
   font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg--ai .msg-bubble {
+  background: #fffaf0;
   box-shadow:
     0 -3px 0 0 var(--wood), 0 3px 0 0 var(--wood),
     -3px 0 0 0 var(--wood), 3px 0 0 0 var(--wood);
 }
+.msg--me .msg-bubble {
+  background: #dff0c8;
+  box-shadow:
+    0 -3px 0 0 var(--leaf), 0 3px 0 0 var(--leaf),
+    -3px 0 0 0 var(--leaf), 3px 0 0 0 var(--leaf);
+}
+
+/* 正在输入的三个小点 */
+.typing { display: flex; gap: 5px; padding: 13px 16px; }
+.typing i {
+  width: 6px; height: 6px;
+  background: var(--wood);
+  animation: typing 1s steps(2) infinite;
+}
+.typing i:nth-child(2) { animation-delay: .2s; }
+.typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes typing { 50% { transform: translateY(-4px); background: var(--wood-light); } }
+
+/* 清单卡片 */
+.plan {
+  margin: 10px 3px 0;
+  padding: 10px 14px 12px;
+  background: var(--parchment-deep);
+  background-image: repeating-linear-gradient(0deg, transparent 0 25px, rgba(110, 64, 41, .12) 25px 26px);
+  box-shadow:
+    0 -3px 0 0 var(--wood-light), 0 3px 0 0 var(--wood-light),
+    -3px 0 0 0 var(--wood-light), 3px 0 0 0 var(--wood-light);
+}
+.plan ul { list-style: none; }
+.plan li { padding: 1px 0; }
+.plan label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 15px; }
+.plan input[type="checkbox"] { accent-color: var(--leaf); margin-top: 5px; flex: none; }
+.plan-text { position: relative; }
+.plan-text::after { /* 手写感划线 */
+  content: "";
+  position: absolute;
+  left: -2px; right: -2px; top: 55%;
+  height: 2px;
+  background: var(--berry);
+  border-radius: 2px;
+  transform: scaleX(0) rotate(-1.5deg);
+  transform-origin: left center;
+  transition: transform .35s cubic-bezier(.4, .1, .3, 1);
+}
+.plan li.is-struck .plan-text { color: var(--ink-soft); }
+.plan li.is-struck .plan-text::after { transform: scaleX(1) rotate(-1.5deg); }
+.plan-foot { margin-top: 8px; display: flex; justify-content: flex-end; }
+.plan-foot .pixel-btn { font-size: 15px; padding: 4px 12px 6px; }
+.plan-done { font-family: var(--font-cute); font-size: 14px; color: var(--leaf); }
+.plan.is-applied label { cursor: default; }
+
+/* 快捷短语 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip {
+  border: 0;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 3px 10px 4px;
+  color: var(--wood-dark);
+  background: #fffaf0;
+  box-shadow: 0 0 0 2px var(--wood-light), 0 3px 0 0 var(--wood-light);
+  transition: transform .1s steps(1);
+}
+.chip:hover { transform: translateY(-2px); }
+
+.chat-entry .pixel-btn { flex: none; }
+.pixel-btn.is-listening {
+  background: var(--berry);
+  animation: listening 1s steps(2) infinite;
+}
+@keyframes listening { 50% { transform: translateY(-2px); } }
 
 /* ---------- 世界地图占位 ---------- */
 .parchment-map {
