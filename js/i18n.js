@@ -215,6 +215,18 @@ var I18n = (function () {
       "i3.item.lamp": "庭院灯",
       "i3.item.lampNote": "晚上会亮，偶尔闪一下",
       "i3.item.tree": "树",
+      "i3.item.pot": "花盆",
+      "i3.item.potNote": "陶盆里种着两种小花",
+      "i3.item.lantern": "石灯",
+      "i3.item.lanternNote": "晚上灯芯微微亮",
+      "i3.signTo": "往这边走：{name}",
+      "i3.area.yard": "小屋和院子",
+      "i3.area.forest": "小树林",
+      "i3.area.stream": "小溪和木桥",
+      "i3.area.hill": "小山坡和观景台",
+      "i3.area.beach": "沙滩和小码头",
+      "i3.area.orchard": "果园",
+      "i3.area.all": "全岛",
 
       "footnote": "数据只保存在这台电脑的浏览器里"
     },
@@ -419,6 +431,18 @@ var I18n = (function () {
       "i3.item.lamp": "Garden lamp",
       "i3.item.lampNote": "Glows at night and flickers now and then",
       "i3.item.tree": "Tree",
+      "i3.item.pot": "Flower pot",
+      "i3.item.potNote": "A clay pot with two kinds of little flowers",
+      "i3.item.lantern": "Stone lantern",
+      "i3.item.lanternNote": "Its little light glows softly at night",
+      "i3.signTo": "This way: {name}",
+      "i3.area.yard": "Cabin & yard",
+      "i3.area.forest": "Little forest",
+      "i3.area.stream": "Stream & bridge",
+      "i3.area.hill": "Hill & lookout",
+      "i3.area.beach": "Beach & dock",
+      "i3.area.orchard": "Orchard",
+      "i3.area.all": "Whole island",
 
       "footnote": "Your data stays in this computer's browser"
     }
