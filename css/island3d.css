@@ -20,11 +20,11 @@ body.on-island .footnote { display: none; }
 .view-island.is-bare .i3-hud { opacity: 0; pointer-events: none; }
 
 /* ---------- 时钟、金币 ---------- */
-.i3-clock { top: 92px; left: 14px; width: 250px; padding: 8px 14px 10px; }
+.i3-clock { top: 92px; left: 14px; width: 270px; padding: 8px 14px 10px; }
 .i3-row { display: flex; align-items: center; gap: 10px; }
 .i3-now { font-family: var(--font-pixel); font-size: 30px; line-height: 1.1; }
 #i3-period { font-family: var(--font-cute); flex: 1; }
-.i3-live { font-size: 12px; min-height: 26px; min-width: 0; padding: 0 8px; }
+.i3-live { font-size: 12px; min-height: 26px; min-width: 0; padding: 0 8px; white-space: nowrap; }
 .i3-live.is-on { background: #e6f5df; color: #2f6e25; }
 #i3-time { width: 100%; accent-color: var(--berry); height: 24px; margin: 2px 0 0; }
 .i3-marks { display: flex; justify-content: space-between; font-size: 12px; color: var(--wood-dark); }
@@ -107,7 +107,12 @@ body.on-island .footnote { display: none; }
 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 820px) {
-  body.on-island .topbar { top: 6px; left: 8px; right: 8px; }
+  body.on-island .topbar { top: 6px; left: 8px; right: 8px; gap: 8px; }
+  body.on-island .date-sign { display: none; }
+  body.on-island .tabs { gap: 6px; }
+  body.on-island .tab { font-size: 14px; padding: 4px 6px 6px; min-width: 0; }
+  .i3-tab { font-size: 13px; padding: 3px 2px 5px; }
+  .i3-page { font-size: 15px; }
   .i3-clock { top: 112px; left: 10px; width: auto; padding: 2px 10px 4px; }
   .i3-clock .i3-purse { margin-top: 2px; padding-top: 2px; }
   .i3-clock #i3-time, .i3-clock .i3-marks { display: none; }

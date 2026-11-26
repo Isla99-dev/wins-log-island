@@ -72,7 +72,7 @@ var Island = (function () {
     const isl = Store.island();
 
     /* ================= cel shading kit ================= */
-    const grad = new THREE.DataTexture(new Uint8Array([96, 96, 96, 178, 178, 178, 255, 255, 255]), 3, 1, THREE.RGBFormat);
+    const grad = new THREE.DataTexture(new Uint8Array([100, 100, 100, 180, 180, 180, 238, 238, 238]), 3, 1, THREE.RGBFormat); // 最亮一档压到 238：灯再近也不会把地面打成一片白
     grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.generateMipmaps = false; grad.needsUpdate = true;
     const matCache = new Map();
     function toon(c, o) {
@@ -92,6 +92,14 @@ var Island = (function () {
     const S = (r, c, x, y, z, p, det, line) => mesh(new THREE.IcosahedronGeometry(r, det == null ? 1 : det), c, x, y, z, p, line == null ? false : line);
     const glow = (c, i) => toon(c, { emissive: c, emissiveIntensity: i == null ? 1 : i });
     const basic = (c, o) => new THREE.MeshBasicMaterial(Object.assign({ color: c }, o || {}));
+    // 光晕：只给灯泡、窗户、灯芯和篝火，用很小的叠加光片，不靠点光源把地面照亮
+    const haloTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.25, "rgba(255,255,255,.45)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+    const halos = [];
+    function halo(parent, x, y, z, size, strength, color, fire) {
+      const m = new THREE.SpriteMaterial({ map: haloTex, color: color || 0xffc777, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+      const sp = new THREE.Sprite(m); sp.position.set(x, y, z); sp.scale.setScalar(size); sp.raycast = () => {}; parent.add(sp);
+      halos.push({ m, k: strength, fire: !!fire }); return sp;
+    }
     // 从下到上的方块：给出 x/z 范围和 y 范围
     // 平的地块不投影子（不然傍晚太阳低时会出现一道道条纹），悬崖另外打开
     const slab = (x0, x1, z0, z1, y0, y1, c, p, line) => { const m = B(x1 - x0, y1 - y0, z1 - z0, c, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, p || scene, line); m.castShadow = false; return m; };
@@ -314,10 +322,11 @@ var Island = (function () {
     B(.5, .36, .02, 0xf2c14e, -.3, 1.15, -1.17, house, false); B(.3, .12, .021, 0xe0795a, -.3, 1.2, -1.165, house, false);
     C(.005, .005, .3, 4, 0x222222, .2, 1.53, -.1, house, false);
     C(.06, .2, .16, 12, glow(0xffd28a, .5), .2, 1.33, -.1, house);
-    const room = new THREE.PointLight(0xffbf73, 0, 4, 2); room.position.set(.2, 1.15, 0); house.add(room); lightsNight.push([room, 1.1]);
-    const spill = new THREE.PointLight(0xffb866, 0, 2.4, 2); spill.position.set(.3, .9, 2.1); house.add(spill); lightsNight.push([spill, .45]);
+    const room = new THREE.PointLight(0xffbf73, 0, 2.6, 2); room.position.set(.2, 1.15, 0); house.add(room); lightsNight.push([room, .6]);
+    const spill = new THREE.PointLight(0xffb866, 0, 1.7, 2); spill.position.set(.3, .9, 1.9); house.add(spill); lightsNight.push([spill, .22]);
+    halo(house, .55, .9, 1.32, 1.5, .28); halo(house, -.8, 1.0, 1.34, .55, .4); halo(house, 1.6, 1.0, -.3, .6, .35);
     const bulbMat = basic(0xffd89a);
-    for (let i = 0; i < 8; i++) { const t = i / 7; const b = new THREE.Mesh(new THREE.SphereGeometry(.03, 8, 6), bulbMat); b.position.set(-.1 + t * 1.3, 1.33 - Math.sin(t * Math.PI) * .07, 1.16); house.add(b); }
+    for (let i = 0; i < 8; i++) { const t = i / 7; const b = new THREE.Mesh(new THREE.SphereGeometry(.03, 8, 6), bulbMat); b.position.set(-.1 + t * 1.3, 1.33 - Math.sin(t * Math.PI) * .07, 1.16); house.add(b); halo(house, b.position.x, b.position.y, b.position.z + .02, .2, .5); }
     // 雨桶、伞
     K("barrel", -3.25, 0, -3.25, { s: 1.5 });
     yres(-3, 0);
@@ -337,8 +346,8 @@ var Island = (function () {
     yres(-1, 3);
     C(.04, .05, 1.4, 8, 0x3d4552, -1, .7, 3);
     const lantern = B(.2, .26, .2, glow(0xffd391, 0), -1, 1.5, 3); B(.28, .05, .28, 0x2b3140, -1, 1.66, 3);
-    const gl = new THREE.PointLight(0xffc46b, 0, 2.8, 2); gl.position.set(-1, 1.35, 3); yard.add(gl);
-    lightsNight.push([gl, .7]); flick.push({ l: gl, m: lantern.material, base: .7 });
+    const gl = new THREE.PointLight(0xffc46b, 0, 1.9, 2); gl.position.set(-1, 1.3, 3); yard.add(gl);
+    lightsNight.push([gl, .3]); flick.push({ l: gl, m: lantern.material, base: .3, h: halo(yard, -1, 1.5, 3, .95, .55) });
     // 公告板：今天完成的事
     yres(-4, 1);
     const board = new THREE.Group(); board.position.set(-4.2, 0, 1); board.rotation.y = .35; yard.add(board);
@@ -377,7 +386,7 @@ var Island = (function () {
       const g = new THREE.Group(); g.position.set(x, y, z); (p || scene).add(g);
       B(.34, .08, .34, 0x9fa3a8, 0, .04, 0, g); C(.07, .09, .4, 6, 0xa7aab0, 0, .28, 0, g);
       B(.3, .06, .3, 0x9fa3a8, 0, .51, 0, g);
-      const core = B(.18, .16, .18, glow(0xffd391, 0), 0, .62, 0, g, false); stoneLamps.push(core.material);
+      const core = B(.18, .16, .18, glow(0xffd391, 0), 0, .62, 0, g, false); stoneLamps.push(core.material); halo(g, 0, .62, 0, .55, .45);
       for (const [dx, dz] of [[-.11, -.11], [.11, -.11], [-.11, .11], [.11, .11]]) B(.05, .18, .05, 0xa7aab0, dx, .62, dz, g, false);
       const roof = mesh(new THREE.ConeGeometry(.3, .2, 4), 0x8f9399, 0, .8, 0, g); roof.rotation.y = Math.PI / 4;
       S(.04, 0x8f9399, 0, .93, 0, g, 0);
@@ -422,8 +431,8 @@ var Island = (function () {
     reserve(7, -7); const fire = new THREE.Group(); fire.position.set(7.5, 0, -6.5); scene.add(fire);
     K("campfire_stones", 0, 0, 0, { s: 1.5, p: fire }); K("campfire_logs", 0, .03, 0, { s: 1.6, p: fire });
     const fireCore = S(.12, glow(0xffa04a, 0), 0, .16, 0, fire, 0); fireCore.scale.y = 1.5; fireCore.castShadow = false;
-    const fireLight = new THREE.PointLight(0xff9a4a, 0, 3, 2); fireLight.position.y = .5; fire.add(fireLight);
-    lightsNight.push([fireLight, .55]); fire.userData.what = "camp"; flick.push({ l: fireLight, m: fireCore.material, base: .55, fire: true });
+    const fireLight = new THREE.PointLight(0xff9a4a, 0, 2.2, 2); fireLight.position.y = .5; fire.add(fireLight); halo(fire, 0, .25, 0, 1.1, .6, 0xff9a4a, true);
+    lightsNight.push([fireLight, .35]); fire.userData.what = "camp"; flick.push({ l: fireLight, m: fireCore.material, base: .35, fire: true });
     reserve(8, -6); K("log", 8.4, 0, -6.4, { s: 1.5, r: .3 });
     reserve(6, -7); K("log", 6.6, 0, -6.7, { s: 1.5, r: 1.8 });
     // 小帐篷：三角形的布 + 黑黑的门口
@@ -504,7 +513,7 @@ var Island = (function () {
       pot(g) { K("pot_large", 0, 0, 0, { s: .9, p: g }); K("flower_redA", -.1, .15, 0, { s: 1.3, p: g }); K("flower_yellowC", .12, .15, .05, { s: 1.1, p: g }); },
       bench(g) { K("bench", 0, 0, 0, { s: 2, p: g }); },
       lantern(g) { const s = stoneLamp(0, 0, g); s.position.set(0, 0, 0); },
-      lamp(g) { C(.035, .045, 1.2, 8, 0x3d4552, 0, .6, 0, g); const b = B(.18, .22, .18, glow(0xffd391, 0), 0, 1.3, 0, g); B(.24, .05, .24, 0x2b3140, 0, 1.44, 0, g); const l = new THREE.PointLight(0xffc46b, 0, 2.6, 2); l.position.y = 1.2; g.add(l); lightsNight.push([l, .6]); flick.push({ l, m: b.material, base: .6 }); },
+      lamp(g) { C(.035, .045, 1.2, 8, 0x3d4552, 0, .6, 0, g); const b = B(.18, .22, .18, glow(0xffd391, 0), 0, 1.3, 0, g); B(.24, .05, .24, 0x2b3140, 0, 1.44, 0, g); const l = new THREE.PointLight(0xffc46b, 0, 1.8, 2); l.position.y = 1.15; g.add(l); lightsNight.push([l, .28]); flick.push({ l, m: b.material, base: .28, h: halo(g, 0, 1.3, 0, .9, .55) }); },
     };
     const TREES = ["tree_oak", "tree_default", "tree_fat", "tree_detailed", "tree_plateau", "tree_small", "tree_simple"];
     const FALL = { tree_oak: "tree_oak_fall", tree_default: "tree_default_fall", tree_fat: "tree_fat_fall", tree_detailed: "tree_detailed_fall", tree_small: "tree_small_fall" };
@@ -598,7 +607,7 @@ var Island = (function () {
       const can = mesh(new THREE.ConeGeometry(.5, .2, 12, 1, true), basic(0xd7ecff, { transparent: true, opacity: .42, side: THREE.DoubleSide, depthWrite: false }), 0, 1.18, 0, umb, false); can.castShadow = false;
       const rim = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(.5, .2, 12, 1, true), 1), EDGE); rim.position.y = 1.18; umb.add(rim);
       g.userData.who = "me"; pickables.push(g);
-      return { g, legL, legR, umb, x: -7, z: 2, y: 0, path: [] };
+      return { g, legL, legR, umb, can, x: -7, z: 2, y: 0, path: [] };
     }
     me = makePerson();
     function makeCat() {
@@ -688,7 +697,7 @@ var Island = (function () {
       cam.updateProjectionMatrix();
     }
     let composer = null, bloom = null;
-    try { if (THREE.EffectComposer && THREE.UnrealBloomPass) { composer = new THREE.EffectComposer(renderer); composer.addPass(new THREE.RenderPass(scene, cam)); bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .2, .3, .95); composer.addPass(bloom); } } catch (e) { composer = null; }
+    try { if (THREE.EffectComposer && THREE.UnrealBloomPass) { composer = new THREE.EffectComposer(renderer); composer.addPass(new THREE.RenderPass(scene, cam)); bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .2, .25, .97); composer.addPass(bloom); } } catch (e) { composer = null; }
     function resize() {
       W = view.clientWidth || innerWidth; H = view.clientHeight || innerHeight;
       const pr = Math.min(devicePixelRatio || 1, 2); renderer.setPixelRatio(pr); renderer.setSize(W, H, false);
@@ -898,7 +907,7 @@ var Island = (function () {
       const on = rainK > .02;
       rainMat.opacity = rainK * .42; rainMesh.visible = on;
       streakMat.opacity = rainK * .5;
-      puddles.forEach(p => p.material.opacity = rainK * .32);
+      puddles.forEach(p => p.material.opacity = rainK * (.32 - .16 * lampOn));
       me.umb.visible = rainK > .4;
       if (!on) { ripples.forEach(r => r.m.material.opacity = 0); drips.forEach(d => d.m.visible = false); return; }
       const spd = reduce ? .25 : 1;
@@ -942,11 +951,17 @@ var Island = (function () {
       hemi.intensity = (.5 + .2 * day) * (1 - .15 * rainK);
       const night = clamp(1 - day + rainK * .35, 0, 1); lampOn = clamp((night - .55) / .35, 0, 1);
       glassMat.color.set(0xcfe6ff).lerp(cB.set(0xffd9a0), lampOn); glassMat.opacity = .12 + lampOn * .06;
-      puddles.forEach((p, i) => p.material.color.set(0x9fbbe0).lerp(cB.set(i === 0 ? 0xffc27a : 0xb7c6e8), lampOn * .6));
+      puddles.forEach((p, i) => p.material.color.set(0x9fbbe0).lerp(cB.set(i === 0 ? 0x8a7458 : 0x3f4c68), lampOn * .8));
       [doorWin, sideWin].forEach(m => m.material.emissiveIntensity = lampOn * .55);
-      stoneLamps.forEach(m => m.emissiveIntensity = lampOn * .7);
+      stoneLamps.forEach(m => m.emissiveIntensity = lampOn * .6);
+      halos.forEach(h => { if (!h.fire) h.m.opacity = lampOn * h.k; });
+      // 不受光照的东西（公告板的纸、水洼）晚上跟着暗下来
+      paper.material.color.set(0xffffff).lerp(cB.set(0x8e8a96), night * .75);
+      me.can.material.color.set(0xd7ecff).lerp(cB.set(0x58627e), night * .8);
+      cA.set(0xe2efff).lerp(cB.set(0x6a7898), night * .75); ripples.forEach(r => r.m.material.color.copy(cA));
+      rainMat.color.set(0xcfe0ff).lerp(cB.set(0x8a9ac0), night * .6);
       bulbMat.color.set(0xb9a98c).lerp(cB.set(0xffd89a), lampOn);
-      if (bloom) bloom.strength = lampOn * .35;
+      if (bloom) bloom.strength = lampOn * .22;
       const hh = Math.floor(t), mm = Math.floor((t - hh) * 60);
       $("i3-now").textContent = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0"); $("i3-period").textContent = period(t);
     }
@@ -987,8 +1002,9 @@ var Island = (function () {
       applyTime(hours);
       lightsNight.forEach(([l, b]) => l.intensity = lampOn * b);
       flick.forEach(f => {
-        if (f.fire) { const k = reduce ? 1 : .8 + Math.sin(now * .013) * .12 + Math.sin(now * .031) * .08; f.l.intensity = lampOn * f.base * k; f.m.emissiveIntensity = (.3 + lampOn * .7) * k; return; }
-        const off = !reduce && Math.random() < .004; f.l.intensity *= off ? .25 : 1; f.m.emissiveIntensity = lampOn * (off ? .2 : .8);
+        if (f.fire) { const k = reduce ? 1 : .8 + Math.sin(now * .013) * .12 + Math.sin(now * .031) * .08; f.l.intensity = lampOn * f.base * k; f.m.emissiveIntensity = (.3 + lampOn * .7) * k; halos.forEach(h => { if (h.fire) h.m.opacity = (.15 + lampOn * .85) * h.k * k; }); return; }
+        const off = !reduce && Math.random() < .004; f.l.intensity *= off ? .25 : 1; f.m.emissiveIntensity = lampOn * (off ? .15 : .6);
+        if (off && f.h) f.h.material.opacity *= .3;
       });
       stepWalker(me, dt, 2.4, now, [me.legL, me.legR]);
       if (!stepWalker(cat, dt, 1.1, now) && now > cat.next) { const n = cells.get((Math.round(cat.x) + Math.round(Math.random() * 2 - 1)) + "," + (Math.round(cat.z) + Math.round(Math.random() * 2 - 1))); const from = cellAt(cat.x, cat.z); if (walkable(n) && from && canStep(from, n)) cat.path = [[n.x, n.z]]; cat.next = now + 2000 + Math.random() * 3500; }
