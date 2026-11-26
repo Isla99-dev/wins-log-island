@@ -7,8 +7,9 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffcf4a' stroke='%236e4029' stroke-width='.6' d='M3 0h1v2h1v1h2v1h-2v1h-1v2h-1v-2h-1v-1h-2v-1h2v-1h1z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/island3d.css">
 </head>
-<body>
+<body class="on-island">
 
 <header class="topbar">
   <div class="brand plank">
@@ -31,65 +32,90 @@
   </nav>
 </header>
 
-<!-- ============ 小岛主页 ============ -->
+<!-- ============ 小岛主页（3D） ============ -->
 <main class="view view-island" id="view-island">
+  <canvas id="island3d" data-i18n-aria="i3.aria"></canvas>
 
-  <section class="panel tasks" aria-labelledby="tasks-title">
-    <h2 id="tasks-title" class="panel-title" data-i18n="tasks.title">今日任务</h2>
+  <!-- 时间、金币 -->
+  <div class="i3-hud i3-clock plank" id="i3-clock">
+    <div class="i3-row"><span class="i3-now" id="i3-now">12:00</span><span id="i3-period"></span>
+      <button class="i3-btn i3-live is-on" id="i3-live" type="button" data-i18n="i3.live">实时</button></div>
+    <input type="range" id="i3-time" min="0" max="1439" step="1" data-i18n-aria="i3.timeAria">
+    <div class="i3-marks" id="i3-marks"></div>
+    <div class="i3-purse">
+      <span><span data-i18n="i3.coins">金币</span> <b id="i3-coins">0</b></span>
+      <span><span data-i18n="i3.todayWins">今日 Wins</span> <b id="i3-wins">0</b></span>
+    </div>
+  </div>
 
-    <form class="task-entry" id="task-form" autocomplete="off">
-      <input type="text" id="task-input" maxlength="200" data-i18n-placeholder="tasks.placeholder" data-i18n-aria="tasks.inputAria">
-      <button class="pixel-btn" type="submit" data-i18n="tasks.add">种下</button>
-    </form>
+  <!-- 右侧面板：任务 / 商店 / 本月 / 助手 -->
+  <section class="panel i3-hud i3-panel" id="i3-panel" data-i18n-aria="i3.panelAria">
+    <div class="i3-tabs" role="tablist">
+      <button class="i3-tab is-on" type="button" data-page="tasks" data-i18n="i3.tabTasks">任务</button>
+      <button class="i3-tab" type="button" data-page="shop" data-i18n="i3.tabShop">商店</button>
+      <button class="i3-tab" type="button" data-page="month" data-i18n="i3.tabMonth">本月</button>
+      <button class="i3-tab" type="button" data-page="helper" data-i18n="i3.tabHelper">助手</button>
+    </div>
 
-    <ul class="todo" id="todo"></ul>
-    <p class="empty" id="todo-empty" data-i18n="tasks.empty"></p>
+    <div class="i3-page tasks" data-page="tasks">
+      <form class="task-entry" id="task-form" autocomplete="off">
+        <input type="text" id="task-input" maxlength="200" data-i18n-placeholder="tasks.placeholder" data-i18n-aria="tasks.inputAria">
+        <button class="pixel-btn" type="submit" data-i18n="tasks.add">种下</button>
+      </form>
+      <ul class="todo" id="todo"></ul>
+      <p class="empty" id="todo-empty" data-i18n="tasks.empty"></p>
+      <div class="divider" aria-hidden="true"></div>
+      <h3 class="sub-title">
+        <span data-i18n="wins.title">今天的 Wins</span>
+        <span class="count-badge"><b id="win-count">0</b> <span data-i18n="wins.unit">件</span></span>
+      </h3>
+      <ol class="wins" id="wins"></ol>
+      <p class="empty" id="wins-empty" data-i18n="wins.empty"></p>
+      <div class="panel-foot">
+        <button class="pixel-btn pixel-btn--warm" id="end-day" type="button" data-i18n="endDay">🖨 结束今天</button>
+      </div>
+    </div>
 
-    <div class="divider" aria-hidden="true"></div>
+    <div class="i3-page" data-page="shop" id="i3-shop" hidden></div>
+    <div class="i3-page" data-page="month" id="i3-month" hidden></div>
 
-    <h3 class="sub-title">
-      <span data-i18n="wins.title">今天的 Wins</span>
-      <span class="count-badge"><b id="win-count">0</b> <span data-i18n="wins.unit">件</span></span>
-    </h3>
-    <ol class="wins" id="wins"></ol>
-    <p class="empty" id="wins-empty" data-i18n="wins.empty"></p>
-
-    <div class="panel-foot">
-      <button class="pixel-btn pixel-btn--warm" id="end-day" type="button" data-i18n="endDay">🖨 结束今天</button>
+    <div class="i3-page helper" data-page="helper" hidden>
+      <div class="helper-head">
+        <span class="mode-tag" id="ai-mode" data-i18n="helper.mode" data-i18n-title="helper.modeTitle">练习模式</span>
+      </div>
+      <div class="chat-log" id="chat-log" aria-live="polite"></div>
+      <div class="chips" id="chat-chips">
+        <button type="button" class="chip" data-chip="plan" data-i18n="chip.plan"></button>
+        <button type="button" class="chip" data-chip="done" data-i18n="chip.done"></button>
+        <button type="button" class="chip" data-chip="stuck" data-i18n="chip.stuck"></button>
+      </div>
+      <form class="task-entry chat-entry" id="chat-form" autocomplete="off">
+        <input type="text" id="chat-input" maxlength="300" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.inputAria">
+        <button class="pixel-btn pixel-btn--icon" id="chat-mic" type="button" data-i18n-aria="chat.mic" data-i18n-title="chat.micTitle">🎙</button>
+        <button class="pixel-btn" type="submit" data-i18n="chat.send">发送</button>
+      </form>
+      <p class="soon" id="chat-hint" data-i18n="chat.hint"></p>
     </div>
   </section>
 
-  <section class="panel island" aria-labelledby="island-title">
-    <h2 id="island-title" class="panel-title" data-i18n="island.title">我的小岛</h2>
-    <div class="island-frame">
-      <canvas id="island" width="128" height="80" data-i18n-aria="island.aria"></canvas>
-      <div class="island-tip" id="island-tip" hidden></div>
-    </div>
-    <p class="caption" id="island-caption" aria-live="polite"></p>
-  </section>
+  <!-- 镜头和天气 -->
+  <div class="i3-hud i3-ctrl plank" id="i3-ctrl">
+    <button class="i3-btn" id="i3-rotl" type="button" data-i18n="i3.rotL">左转</button>
+    <button class="i3-btn" id="i3-rotr" type="button" data-i18n="i3.rotR">右转</button>
+    <button class="i3-btn" id="i3-zin" type="button" data-i18n-aria="i3.zoomIn" data-i18n-title="i3.zoomIn">＋</button>
+    <button class="i3-btn" id="i3-zout" type="button" data-i18n-aria="i3.zoomOut" data-i18n-title="i3.zoomOut">－</button>
+    <button class="i3-btn" id="i3-rain" type="button"></button>
+    <button class="i3-btn" id="i3-hide" type="button" data-i18n="i3.hideUi">只看小岛</button>
+  </div>
+  <button class="i3-btn i3-show" id="i3-show" type="button" data-i18n="i3.showUi">显示界面</button>
 
-  <section class="panel helper" aria-labelledby="helper-title">
-    <div class="helper-head">
-      <h2 id="helper-title" class="panel-title" data-i18n="helper.title">小岛助手</h2>
-      <span class="mode-tag" id="ai-mode" data-i18n="helper.mode" data-i18n-title="helper.modeTitle">练习模式</span>
-    </div>
-
-    <div class="chat-log" id="chat-log" aria-live="polite"></div>
-
-    <div class="chips" id="chat-chips">
-      <button type="button" class="chip" data-chip="plan" data-i18n="chip.plan"></button>
-      <button type="button" class="chip" data-chip="done" data-i18n="chip.done"></button>
-      <button type="button" class="chip" data-chip="stuck" data-i18n="chip.stuck"></button>
-    </div>
-
-    <form class="task-entry chat-entry" id="chat-form" autocomplete="off">
-      <input type="text" id="chat-input" maxlength="300" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.inputAria">
-      <button class="pixel-btn pixel-btn--icon" id="chat-mic" type="button" data-i18n-aria="chat.mic" data-i18n-title="chat.micTitle">🎙</button>
-      <button class="pixel-btn" type="submit" data-i18n="chat.send">发送</button>
-    </form>
-    <p class="soon" id="chat-hint" data-i18n="chat.hint"></p>
-  </section>
-
+  <div class="i3-placing plank" id="i3-placing" hidden><span id="i3-ptext"></span>
+    <button class="i3-btn" id="i3-pcancel" type="button" data-i18n="i3.cancel">取消</button></div>
+  <div class="i3-bubble" id="i3-bubble" aria-live="polite"></div>
+  <div class="i3-tip" id="i3-tip" hidden><div class="panel">
+    <p><b data-i18n="i3.tipTitle"></b></p><p data-i18n="i3.tipBody"></p>
+    <p><button class="pixel-btn" id="i3-tipok" type="button" data-i18n="i3.tipOk"></button></p>
+  </div></div>
 </main>
 
 <!-- ============ 世界地图 ============ -->
@@ -184,16 +210,25 @@
   </symbol>
 </svg>
 
+<script src="lib/three.min.js"></script>
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/CopyShader.js"></script>
+<script src="lib/LuminosityHighPassShader.js"></script>
+<script src="lib/EffectComposer.js"></script>
+<script src="lib/RenderPass.js"></script>
+<script src="lib/ShaderPass.js"></script>
+<script src="lib/UnrealBloomPass.js"></script>
+<script src="js/models.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/store.js"></script>
-<script src="js/island.js"></script>
 <script src="js/tasks.js"></script>
 <script src="js/receipt.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/chat.js"></script>
 <script src="js/worldmap.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/island3d.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -172,6 +172,59 @@ var Store = (function () {
       var day = getDay();
       day.tasks = day.tasks.filter(function (t) { return t.id !== id; });
       save();
-    }
+    },
+
+    // ---------- 3D 小岛 ----------
+    // island: { spent, rain, objs:[{type,x,z,rot,date}], trees:{taskId:"x,z"} }
+    // 金币 = 60 + 每件完成的事 10 枚 − 商店里花掉的
+    island: island,
+    coins: function () {
+      var n = 0;
+      Object.keys(data.days).forEach(function (k) {
+        data.days[k].tasks.forEach(function (t) { if (t.doneAt) n++; });
+      });
+      return 60 + n * 10 - (island().spent || 0);
+    },
+    importIsland3d: importIsland3d
   };
+
+  function island() {
+    if (!data.island || typeof data.island !== "object") data.island = {};
+    var s = data.island;
+    if (typeof s.spent !== "number") s.spent = 0;
+    if (typeof s.rain !== "boolean") s.rain = true;
+    if (!Array.isArray(s.objs)) s.objs = [];
+    if (!s.trees || typeof s.trees !== "object") s.trees = {};
+    return s;
+  }
+
+  // 导入 3D 原型（Desktop/index.html）的存档：做过的事、买过的东西（只导入一次）
+  // prices：商店价格表，用来算出原型里花掉了多少金币
+  function importIsland3d(prices) {
+    if (data.meta.importedIsland3d) return 0;
+    var old = read("winsIsland3d.v2");
+    var s = island(), added = 0;
+    if (old && typeof old === "object") {
+      var SAMPLE = ["写 300 字论文 draft", "打开 Google Scholar 找三篇文献", "出门晒十分钟太阳"];
+      (old.tasks || []).forEach(function (t) {
+        if (!t || !t.text) return;
+        if (!t.done && SAMPLE.indexOf(t.text) >= 0) return; // 原型自带的示例任务
+        var key = t.done && /^\d{4}-\d\d-\d\d$/.test(t.doneDate || "") ? t.doneDate : dayKey();
+        var stamp = new Date(key + "T12:00:00").getTime();
+        getDay(key).tasks.push({ id: newId(), text: String(t.text).slice(0, 200), createdAt: stamp, doneAt: t.done ? stamp : null });
+        added++;
+      });
+      (old.objs || []).forEach(function (o) {
+        if (!o || o.sample || o.type === "tree" || !prices[o.type]) return;
+        var p = String(o.key || "").split(",").map(Number);
+        s.objs.push({ type: o.type, x: p[0] || 0, z: p[1] || 0, rot: o.rot || 0, date: o.date || dayKey() });
+        s.spent += prices[o.type];
+        added++;
+      });
+      if (typeof old.rain === "boolean") s.rain = old.rain;
+    }
+    data.meta.importedIsland3d = true;
+    save();
+    return added;
+  }
 })();

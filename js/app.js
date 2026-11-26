@@ -44,9 +44,11 @@
       tabs.forEach(function (t) { t.classList.toggle("is-active", t === tab); });
       $("view-island").hidden = view !== "island";
       $("view-map").hidden = view !== "map";
+      document.body.classList.toggle("on-island", view === "island");
+      window.scrollTo(0, 0);
     });
   });
 
-  // ---- 小岛 ----
-  Island.init($("island"));
+  // ---- 3D 小岛 ----
+  Island.init();
 })();
