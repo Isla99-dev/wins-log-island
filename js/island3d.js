@@ -1,11 +1,11 @@
 /*
- * 我的小岛（3D）—— 干净、清晰、精致的风格化写实，像一个高级的玩具世界
+ * 我的小岛（3D）—— 三渲二卡通风格：微缩模型、深色细轮廓线、饱和明快的颜色、雨夜暖光
  * three.js r128（lib/ 里，非 module 版本）
  *
- * 画面：MeshStandard / MeshPhysical 材质，柔和环境光（自己生成的「小房间」环境贴图），
- *       ACES Filmic 色调映射 + sRGB 输出（在最后一道后期里做），PCFSoft 软阴影，FogExp2 远景雾，
- *       只有真正发光的东西（灯泡、窗户、篝火）亮到会泛光（HDR 阈值 = 选择性泛光），
- *       小灯泡用 InstancedMesh，真正的点光源不超过 6 个。画质开关：高 / 低。
+ * 画面：全部用 MeshToonMaterial + 3 档渐变（暗 / 中 / 亮，NearestFilter，最亮一档压在 238），
+ *       深色细轮廓线（EdgesGeometry，#1b2133），不做色调映射（NoToneMapping，颜色不发灰），
+ *       PCFSoft 阴影，淡淡的远景雾；泛光只给发光物体（阈值 0.95），小灯泡用 InstancedMesh，
+ *       点光源不超过 6 个，照亮范围小。画质开关：高 / 低。
  * 玩法（不变）：完成一件事 → 种一棵树、+10 金币；商店买东西放到岛上；公告栏显示今日 Wins。
  * 数据都在 Store 里（Store.island()、Store.coins()）。
  */
@@ -73,14 +73,14 @@ var Island = (function () {
   }
 
   /* ================= 季节配色（每季最多三个主色） ================= */
-  // 第一轮只做现在这个季节（秋天）；其他季节先用秋天的。
+  // 饱和、明快的卡通配色（和最早的 3D 原型一致）；季节切换以后再做。
   const SEASONS = {
-    autumn: {
-      grass: 0x7c8b45, grassTip: 0x9aa257, foliage: [0xd98a35, 0xe6ad45, 0xbf5a2e, 0xcf7a34], pine: 0x4f6340,
-      wood: 0xb78258, cream: 0xf1e6d2, accent: 0xc4622d,
+    toon: {
+      grass: 0x86b86a, grassTip: 0x7fb869, foliage: [0x6fae5c, 0x82c06c, 0x5e9f55], pine: 0x4f8f48,
+      wood: 0x8a5a34, cream: 0xf1e8d8, accent: 0xe0795a, roof: 0x41607f, water: 0x4f8fc0, soil: 0x8b6a4e, base: 0x4f5566,
     },
   };
-  const SEASON = SEASONS.autumn;
+  const SEASON = SEASONS.toon;
 
   function build() {
     const view = $("view-island");
@@ -90,16 +90,37 @@ var Island = (function () {
     const HIGH = Q === "high";
 
     /* ================= 材质工具 ================= */
-    const col = h => new THREE.Color(h).convertSRGBToLinear();
+    const col = h => new THREE.Color(h);
+    // 卡通着色：3 档渐变（暗 / 中 / 亮），最亮一档压到 238，灯再近也不会把地面打成一片白
+    const grad = new THREE.DataTexture(new Uint8Array([100, 100, 100, 180, 180, 180, 238, 238, 238]), 3, 1, THREE.RGBFormat);
+    grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.generateMipmaps = false; grad.needsUpdate = true;
+    const NOT_TOON = ["roughness", "metalness", "clearcoat", "clearcoatRoughness", "envMapIntensity", "flatShading"];
+    const TM = o => { const p = Object.assign({}, o); NOT_TOON.forEach(k => delete p[k]); p.gradientMap = grad; return new THREE.MeshToonMaterial(p); };
+    // 深色细轮廓线
+    const EDGE = new THREE.LineBasicMaterial({ color: 0x1b2133, transparent: true, opacity: .7 });
+    const edgeCache = new Map();
+    function outline(m, th) {
+      const k = m.geometry.uuid + "|" + th; let e = edgeCache.get(k);
+      if (!e) { e = new THREE.EdgesGeometry(m.geometry, th); edgeCache.set(k, e); }
+      const l = new THREE.LineSegments(e, EDGE); l.raycast = () => {}; m.add(l); return l;
+    }
+    // 哪些形状加轮廓线：方块、圆柱、圆锥、拉伸体加；球（树冠、小人、猫）和平面不加
+    function edgeAngle(geo) {
+      const t = geo.type;
+      if (t === "BoxGeometry" || t === "BoxBufferGeometry") return 25;
+      if (/Cylinder|Cone|Torus/.test(t)) return 40;
+      if (/Extrude/.test(t)) return 30;
+      return 0;
+    }
     const allMats = new Set();
     const MATS = new Map();
     // 干净的纯色 + 真实光泽：rough 越小越亮，metal 是金属感
     function mat(hex, o) {
       o = o || {};
-      const key = hex + "|" + (o.rough == null ? .72 : o.rough) + "|" + (o.metal || 0) + "|" + (o.side || 0) + "|" + (o.flat ? 1 : 0);
+      const key = hex + "|" + (o.side || 0);
       let m = MATS.get(key);
       if (!m) {
-        m = new THREE.MeshStandardMaterial({ color: col(hex), roughness: o.rough == null ? .72 : o.rough, metalness: o.metal || 0, side: o.side || THREE.FrontSide, flatShading: !!o.flat });
+        m = TM({ color: col(hex), side: o.side || THREE.FrontSide });
         MATS.set(key, m); allMats.add(m);
       }
       return m;
@@ -109,7 +130,7 @@ var Island = (function () {
     const glows = [];
     function glowMat(hex, base, opt) {
       opt = opt || {};
-      const m = own(new THREE.MeshStandardMaterial({ color: col(opt.color != null ? opt.color : hex), emissive: col(hex), emissiveIntensity: 0, roughness: opt.rough == null ? .4 : opt.rough, transparent: !!opt.opacity, opacity: opt.opacity || 1 }));
+      const m = own(TM({ color: col(opt.color != null ? opt.color : hex), emissive: col(hex), emissiveIntensity: 0, transparent: !!opt.opacity, opacity: opt.opacity || 1 }));
       glows.push({ m, base, day: opt.day || 0, phase: rnd() * 6, breathe: opt.breathe == null ? .07 : opt.breathe, fire: !!opt.fire });
       return m;
     }
@@ -118,7 +139,8 @@ var Island = (function () {
     const GEO = new Map();
     const cached = (key, fn) => { let g = GEO.get(key); if (!g) { g = fn(); GEO.set(key, g); } return g; };
     // 圆角方块：所有木头、家具都用它，轮廓利落又圆润
-    function rbox(w, h, d, r) {
+    function rbox(w, h, d) { return cached("bx" + [w, h, d].map(v => v.toFixed(3)).join("|"), () => new THREE.BoxGeometry(w, h, d)); }
+    function rboxRound(w, h, d, r) {
       r = Math.min(r == null ? .03 : r, w / 2 - .001, h / 2 - .001, d / 2 - .001);
       return cached("rb" + [w, h, d, r].map(v => v.toFixed(3)).join("|"), () => {
         const s = new THREE.Shape(), x = -w / 2 + r, y = -h / 2 + r, W2 = w - 2 * r, H2 = h - 2 * r;
@@ -138,7 +160,9 @@ var Island = (function () {
     let DEF = scene;
     function mesh(geo, m, x, y, z, p, shadow) {
       const o = new THREE.Mesh(geo, m); o.position.set(x || 0, y || 0, z || 0);
-      o.castShadow = shadow !== false; o.receiveShadow = true; (p || DEF).add(o); return o;
+      o.castShadow = shadow !== false; o.receiveShadow = true; (p || DEF).add(o);
+      const th = edgeAngle(geo); if (th) outline(o, th);
+      return o;
     }
     const R = (w, h, d, m, x, y, z, p, r) => mesh(rbox(w, h, d, r), m, x, y, z, p);
     const Cy = (rt, rb, h, m, x, y, z, p, s) => mesh(cylG(rt, rb, h, s), m, x, y, z, p);
@@ -146,11 +170,11 @@ var Island = (function () {
 
     /* ---------- Kenney 模型 → 统一的写实材质（不描边） ---------- */
     const PAL = {
-      leafsGreen: 0x7d8f4e, leafsDark: 0x56663a, leafsFall: SEASON.accent, woodBark: 0x7a5338, woodBarkDark: 0x5e4030,
-      woodBirch: 0xe9dfcc, woodDark: 0x6b4a35, wood: SEASON.wood, woodInner: 0xd9b48a, stone: 0xa59a8c, dirt: 0x8a6b50,
-      grass: SEASON.grass, colorRed: SEASON.accent, colorYellow: 0xe3a83e, colorPurple: 0x9c7fa8, colorWhite: SEASON.cream,
-      colorTan: 0xd9c3a0, corn: 0xe3a83e, plant: 0x6f7f45, metal: 0x5a5d63, metalMedium: 0x7c8087, lamp: 0xffe2b0,
-      carpetWhite: SEASON.cream, carpetDarker: 0x5d6f86,
+      leafsGreen: 0x6fae5c, leafsDark: 0x4f8f4c, leafsFall: 0xe59a52, woodBark: 0x7a5236, woodBarkDark: 0x5e3f2a,
+      woodBirch: 0xeadfca, woodDark: 0x6b4a33, wood: 0xa36d40, woodInner: 0xdcb47e, stone: 0xa7aab0, dirt: 0x8b6a4e,
+      grass: 0x6fa75a, colorRed: SEASON.accent, colorYellow: 0xf2c14e, colorPurple: 0xb592e0, colorWhite: 0xf6f1e7,
+      colorTan: 0xdcc6a2, corn: 0xf2c14e, plant: 0x5e9f55, metal: 0x5a5f6a, metalMedium: 0x7a808a, lamp: 0xffe2a8,
+      carpetWhite: 0xf6f1e7, carpetDarker: 0x5d7fa8,
     };
     const ROUGH = { metal: .35, metalMedium: .4, stone: .88, dirt: .95, woodBark: .85, woodBarkDark: .85, wood: .6, woodDark: .6, woodInner: .7, lamp: .3 };
     const METAL = { metal: .7, metalMedium: .55 };
@@ -177,7 +201,7 @@ var Island = (function () {
         const m = o.material;
         if (m.map) {
           let t = texMats.get(m.map.uuid);
-          if (!t) { m.map.encoding = THREE.sRGBEncoding; t = own(new THREE.MeshStandardMaterial({ map: m.map, roughness: .62 })); texMats.set(m.map.uuid, t); }
+          if (!t) { m.map.encoding = THREE.LinearEncoding; t = own(TM({ map: m.map })); texMats.set(m.map.uuid, t); }
           o.material = t;
         } else {
           const over = name.indexOf("bridge") === 0 && m.name === "stone" ? SEASON.wood : null; // 木桥的桥面用木头色
@@ -185,6 +209,7 @@ var Island = (function () {
         }
         if (smooth) o.geometry = smoothGeo(o.geometry);
         o.castShadow = o.receiveShadow = true;
+        outline(o, 38);
       });
       PROTO[name] = g;
       return g;
@@ -203,25 +228,12 @@ var Island = (function () {
     const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "high-performance" });
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const usePost = HIGH;
-    // 高画质：场景先画进 HDR 缓冲，最后一道后期里再做 ACES 和 sRGB；低画质：直接交给渲染器做
-    renderer.toneMapping = usePost ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
-    renderer.outputEncoding = usePost ? THREE.LinearEncoding : THREE.sRGBEncoding;
-
-    // 柔和的环境贴图：一间暖灰色的小房间，几块柔光板（和 RoomEnvironment 一个思路，自己搭的）
-    function makeEnv() {
-      const s = new THREE.Scene();
-      s.add(new THREE.Mesh(new THREE.BoxGeometry(12, 8, 12), new THREE.MeshBasicMaterial({ color: col(0x8c857c), side: THREE.BackSide })));
-      const panel = (x, y, z, w, h, d, k, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: new THREE.Color(c || 0xffffff).multiplyScalar(k) })); m.position.set(x, y, z); s.add(m); };
-      panel(0, 3.9, 0, 7, .1, 7, 4.5); panel(-5.9, 1.2, 1, .1, 3, 4, 2.2, 0xfff0dc); panel(5.9, 1.6, -1.5, .1, 2.4, 3, 1.6, 0xdde8ff); panel(0, .8, -5.9, 5, 1.6, .1, 1.4);
-      const tm = renderer.toneMapping; renderer.toneMapping = THREE.NoToneMapping;
-      const pm = new THREE.PMREMGenerator(renderer); const tex = pm.fromScene(s, .04).texture; pm.dispose();
-      renderer.toneMapping = tm;
-      return tex;
-    }
-    scene.environment = makeEnv();
+    // 不做色调映射：卡通配色保持饱和明快，不被压灰
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.outputEncoding = THREE.LinearEncoding;
 
     const skyC = document.createElement("canvas"); skyC.width = 2; skyC.height = 256;
-    const skyG = skyC.getContext("2d"), skyTex = new THREE.CanvasTexture(skyC); skyTex.encoding = THREE.sRGBEncoding;
+    const skyG = skyC.getContext("2d"), skyTex = new THREE.CanvasTexture(skyC);
     scene.background = skyTex;
     scene.fog = new THREE.FogExp2(0x283a66, .0075);
     let skyKey = "";
@@ -262,7 +274,7 @@ var Island = (function () {
 
     /* ---------- 地形：侧面是土和石头，上面是有轻微起伏的草地 ---------- */
     const terrain = [];
-    const GRASS = SEASON.grass, SOIL = 0x8a6b50, SAND = 0xe0cfa4, CLIFF = 0xa39482, BED = 0xc9b48c;
+    const GRASS = SEASON.grass, SOIL = SEASON.soil, SAND = 0xe6d3a0, CLIFF = 0x9b8e7c, BED = 0xb9a77c;
     const E = N + .5;
     const slab = (x0, x1, z0, z1, y0, y1, m) => { const o = mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, scene); o.castShadow = false; return o; };
     // 平缓的起伏（几组正弦叠起来，很柔和，不是噪点）
@@ -296,17 +308,17 @@ var Island = (function () {
       }
       g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return t;
     })();
-    const waterMat = own(new THREE.MeshPhysicalMaterial({ color: col(0x3f8c93), roughness: .06, metalness: 0, transparent: true, opacity: .74, depthWrite: false, normalMap: waterNormal, normalScale: new THREE.Vector2(.22, .22), clearcoat: .6, clearcoatRoughness: .1 }));
+    const waterMat = own(TM({ color: col(SEASON.water), transparent: true, opacity: .85, depthWrite: false, normalMap: waterNormal, normalScale: new THREE.Vector2(.22, .22), clearcoat: .6, clearcoatRoughness: .1 }));
     const streamW = slab(.5, 2.5, -E, 8.5, -.52, -.1, waterMat); streamW.receiveShadow = false;
     const seaW = slab(.5, E, 8.5, E, -1.02, -.1, waterMat); seaW.receiveShadow = false;
     terrain.push(streamW, seaW);
-    const baseM = mat(0x3d3431, { rough: .55 });
+    const baseM = mat(SEASON.base);
     mesh(rbox(25.5, .3, 25.5, .08), baseM, 0, -1.76, 0, scene).castShadow = false;
     slab(-E, -4.5, -E, -4.5, 0, H1 - .01, cliffM).castShadow = true;
     ground(-E, -4.5, -E, -4.5, H1, GRASS);
     slab(-E, -8.5, -E, -8.5, H1, H2 - .01, cliffM).castShadow = true;
     ground(-E, -8.5, -E, -8.5, H2, GRASS);
-    const stepM = mat(0xb5ab9c, { rough: .85 });
+    const stepM = mat(0x9aa0aa);
     function stairs(cx, cz, base, top) {
       const c = cells.get(cx + "," + cz); c.h = (base + top) / 2; c.res = "stair";
       for (let i = 0; i < 3; i++) {
@@ -329,7 +341,7 @@ var Island = (function () {
       [[-3, 4], [-3, 5], [-3, 6], [-3, 7], [-3, 8], [-4, 8], [-5, 8], [-6, 8], [-7, 8], [-8, 8], [-9, 8]],
     ];
     const pebbleG = cached("pebble", () => { const g = new THREE.SphereGeometry(.3, 20, 10); g.scale(1, .16, 1); return g; });
-    const pebbleM = mat(0xa89e92, { rough: .8 }), pebbleSandM = mat(0xd8c9a6, { rough: .85 });
+    const pebbleM = mat(0xb9b8b0), pebbleSandM = mat(0xd9c79a);
     PATHS.forEach(p => p.forEach(([x, z]) => {
       const c = cells.get(x + "," + z); if (!c) return; if (!c.res) c.res = "path";
       const n = c.zone === "beach" ? 1 : 2;
@@ -346,7 +358,7 @@ var Island = (function () {
     if (!K("bridge_wood", 0, -.05, 0, { s: [2.1, 1.3, 1.5], r: Math.PI / 2, p: bridge })) R(2.2, .12, 1.1, mat(SEASON.wood), 0, .2, 0, bridge);
     bridge.userData.what = "bridge";
     const dock = new THREE.Group(); dock.position.set(6, 0, 0); scene.add(dock);
-    const plankA = mat(SEASON.wood, { rough: .6 }), plankB = mat(0xa87449, { rough: .62 }), postM = mat(0x6b4a35, { rough: .7 });
+    const plankA = mat(0xb07a48), plankB = mat(0xa36d40), postM = mat(0x6b4a33);
     let pi = 0; for (let z = 8.6; z <= 11.6; z += .36) R(1.15, .07, .32, pi++ % 2 ? plankB : plankA, 0, .08, z, dock, .025);
     for (const z of [8.8, 10.2, 11.6]) for (const x of [-.55, .55]) Cy(.07, .07, 1.4, postM, x, -.55, z, dock, 12);
     for (let z = 9; z <= 11; z++) { const c = cells.get("6," + z); c.res = "dock"; c.h = .12; }
@@ -364,8 +376,8 @@ var Island = (function () {
     }
     const house = new THREE.Group(); house.position.set(-1.5, 0, -1.6); yard.add(house);
     for (let x = -3; x <= 0; x++) for (let z = -3; z <= -1; z++) yres(x, z);
-    const LOG = mat(0xa8744a, { rough: .66 }), LOG2 = mat(0x9b6a43, { rough: .68 }), TRIM = mat(SEASON.cream, { rough: .5 });
-    const ROOF = mat(0x4b3f3b, { rough: .78 }), STONE = mat(0x9c9187, { rough: .85 }), FLOOR = mat(0xc49a6c, { rough: .55 });
+    const LOG = mat(0xf1e8d8), LOG2 = mat(0xe6dccb), TRIM = mat(0x6b4a33);
+    const ROOF = mat(SEASON.roof), STONE = mat(0x6e7381), FLOOR = mat(0xc49a6c);
     const W = 3, D = 2.5, LR = .085, ROWS = 10, FY = .14;
     R(W + .3, .14, D + .3, STONE, 0, .07, 0, house, .04);
     R(W - .1, .03, D - .1, FLOOR, 0, FY, 0, house, .01);
@@ -395,8 +407,8 @@ var Island = (function () {
     logWall(D, "z", W / 2, [{ a: -.85, b: .35, y0: .5, y1: 1.4 }]);
     logWall(D, "z", -W / 2, [{ a: -.4, b: .4, y0: .6, y1: 1.3 }]);
     // 窗框 + 玻璃（玻璃晚上透出暖光）
-    const glassMat = own(new THREE.MeshPhysicalMaterial({ color: col(0xdfeaf0), roughness: .04, metalness: 0, transparent: true, opacity: .22, depthWrite: false, emissive: col(0xffa04a), emissiveIntensity: 0, clearcoat: 1, side: THREE.DoubleSide }));
-    glows.push({ m: glassMat, base: .75, day: 0, phase: 1, breathe: .05 });
+    const glassMat = own(TM({ color: col(0xcfe6ff), transparent: true, opacity: .2, depthWrite: false, emissive: col(0xffc27a), emissiveIntensity: 0, side: THREE.DoubleSide }));
+    glows.push({ m: glassMat, base: .45, day: 0, phase: 1, breathe: .05 });
     function windowFrame(cx, cy, w, h, axis, pos) {
       const g = new THREE.Group(); house.add(g);
       if (axis === "x") g.position.set(cx, cy, pos); else { g.position.set(pos, cy, cx); g.rotation.y = Math.PI / 2; }
@@ -412,7 +424,7 @@ var Island = (function () {
     windowFrame(-.25, .95, 1.15, .86, "z", W / 2);
     windowFrame(0, .95, .75, .66, "z", -W / 2);
     // 门：木板门 + 黄铜门把手 + 门框
-    R(.58, 1.2, .07, mat(0x8a5a3c, { rough: .55 }), -.8, FY + .6, D / 2, house, .03);
+    R(.58, 1.2, .07, mat(0x8b5a3c), -.8, FY + .6, D / 2, house, .03);
     for (const y of [.35, .85]) R(.46, .36, .02, mat(0x7c5034, { rough: .6 }), -.8, FY + y, D / 2 + .04, house, .02);
     Sp(.035, mat(0xc9a46a, { rough: .25, metal: .85 }), -.58, FY + .62, D / 2 + .07, house);
     R(.08, 1.3, .14, TRIM, -1.12, FY + .64, D / 2, house, .02); R(.08, 1.3, .14, TRIM, -.48, FY + .64, D / 2, house, .02); R(.74, .08, .14, TRIM, -.8, FY + 1.3, D / 2, house, .02);
@@ -428,9 +440,9 @@ var Island = (function () {
     const slope = Math.atan2(RISE, D / 2 + .1), roofLen = Math.hypot(RISE, D / 2 + .1) + .42;
     for (const s of [1, -1]) {
       const r = R(W + .7, .12, roofLen, ROOF, 0, eaveY + RISE / 2 + .05, s * (D / 4 + .05), house, .04); r.rotation.x = s * slope;
-      R(W + .74, .1, .06, TRIM, 0, eaveY - .1, s * (D / 2 + .43), house, .02); // 屋檐的封檐板
+      R(W + .74, .1, .06, mat(0xd9cdb6), 0, eaveY - .1, s * (D / 2 + .43), house, .02); // 屋檐的封檐板
     }
-    R(W + .78, .1, .18, mat(0x3c3230, { rough: .7 }), 0, eaveY + RISE + .1, 0, house, .04);
+    R(W + .78, .1, .18, mat(0x2f4660), 0, eaveY + RISE + .1, 0, house, .04);
     const chim = new THREE.Group(); chim.position.set(.9, 0, -.55); house.add(chim);
     R(.36, 1.2, .36, STONE, 0, eaveY + RISE - .05, 0, chim, .04); R(.44, .08, .44, mat(0x6f665f, { rough: .8 }), 0, eaveY + RISE + .58, 0, chim, .03);
     // --- 屋里（从大窗户能看到） ---
@@ -441,7 +453,7 @@ var Island = (function () {
     const alu = mat(0x8d9096, { rough: .3, metal: .6 });
     R(.36, .016, .24, alu, .6, .775, -.86, house, .008);
     const lid = R(.36, .24, .014, alu, .6, .9, -.98, house, .008); lid.rotation.x = -.2;
-    const scr = mesh(new THREE.PlaneGeometry(.32, .2), glowMat(0xcfe3ff, 1.6, { day: .55, breathe: .02 }), .6, .9, -.972, house, false); scr.rotation.x = -.2;
+    const scr = mesh(new THREE.PlaneGeometry(.32, .2), glowMat(0x9fd4ff, .7, { day: .5, breathe: .02 }), .6, .9, -.972, house, false); scr.rotation.x = -.2;
     Cy(.05, .04, .1, mat(SEASON.cream, { rough: .4 }), .98, .8, -.82, house, 14);
     const chairM = mat(0x6f7f8f, { rough: .7 });
     R(.42, .05, .4, chairM, .62, .46, -.42, house, .03); R(.42, .42, .05, chairM, .62, .68, -.24, house, .03);
@@ -463,13 +475,13 @@ var Island = (function () {
     Sp(.18, mat(0x6f7f45, { rough: .8 }), 1.05, FY + .32, 1.0, house); Sp(.12, mat(0x7d8f4e, { rough: .8 }), .98, FY + .45, .95, house);
     // 吊灯：灯罩 + 发光的灯泡 + 屋里的点光源（第 1 个）
     Cy(.004, .004, .45, mat(0x2a2a2a), .15, WALLTOP - .2, .1, house, 4);
-    mesh(new THREE.ConeGeometry(.16, .14, 24, 1, true), own(new THREE.MeshStandardMaterial({ color: col(SEASON.cream), roughness: .5, side: THREE.DoubleSide })), .15, WALLTOP - .45, .1, house, false);
-    Sp(.045, glowMat(0xff9d45, 2.6, { color: 0xffe9c8 }), .15, WALLTOP - .5, .1, house);
-    pointLight(house, .15, WALLTOP - .55, .1, 1.25, 3.4);
+    mesh(new THREE.ConeGeometry(.16, .14, 24, 1, true), own(TM({ color: col(SEASON.cream), roughness: .5, side: THREE.DoubleSide })), .15, WALLTOP - .45, .1, house, false);
+    Sp(.045, glowMat(0xffd391, 1.1, { color: 0xffe9c8 }), .15, WALLTOP - .5, .1, house);
+    pointLight(house, .15, WALLTOP - .55, .1, .6, 2.6);
     // 门口的壁灯（第 2 个点光源）
     R(.12, .16, .1, mat(0x2f2a28, { rough: .4, metal: .5 }), -.3, FY + 1.18, D / 2 + .08, house, .02);
-    Sp(.04, glowMat(0xff9d45, 2.4, { color: 0xffe9c8 }), -.3, FY + 1.14, D / 2 + .1, house);
-    pointLight(house, -.3, FY + 1.0, D / 2 + .5, .5, 2.2);
+    Sp(.04, glowMat(0xffd391, 1.0, { color: 0xffe9c8 }), -.3, FY + 1.14, D / 2 + .1, house);
+    pointLight(house, -.3, FY + 1.0, D / 2 + .5, .22, 1.7);
     // 烟囱的白烟：几团柔和的烟，慢慢往上飘
     const softTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, "rgba(255,255,255,.9)"); r.addColorStop(.5, "rgba(255,255,255,.35)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
     const smoke = [];
@@ -511,12 +523,12 @@ var Island = (function () {
     // 庭院灯（第 3 个点光源）
     yres(-1, 3);
     const lampPostM = mat(0x2f2a28, { rough: .35, metal: .6 });
-    const lampGlassM = own(new THREE.MeshPhysicalMaterial({ color: col(0xfff4e0), roughness: .1, transparent: true, opacity: .35, depthWrite: false }));
+    const lampGlassM = own(TM({ color: col(0xfff4e0), roughness: .1, transparent: true, opacity: .35, depthWrite: false }));
     Cy(.035, .05, 1.35, lampPostM, -1, .68, 3, yard, 12); Cy(.09, .1, .06, lampPostM, -1, .03, 3, yard, 16);
     R(.2, .24, .2, lampGlassM, -1, 1.48, 3, yard, .02);
-    Sp(.055, glowMat(0xff9d45, 2.6, { color: 0xffe9c8 }), -1, 1.47, 3, yard);
+    Sp(.055, glowMat(0xffd391, 1.1, { color: 0xffe9c8 }), -1, 1.47, 3, yard);
     mesh(coneG(.17, .12, 4), lampPostM, -1, 1.66, 3, yard).rotation.y = Math.PI / 4;
-    pointLight(yard, -1, 1.35, 3, .55, 2.3, true);
+    pointLight(yard, -1, 1.35, 3, .3, 1.9, true);
     // 今日 Wins 公告栏：带个小屋顶，纸会被灯照到
     yres(-4, 1);
     const board = new THREE.Group(); board.position.set(-4.2, 0, 1); board.rotation.y = .35; yard.add(board);
@@ -524,8 +536,8 @@ var Island = (function () {
     R(.07, 1.25, .07, bwood, -.46, .62, 0, board, .02); R(.07, 1.25, .07, bwood, .46, .62, 0, board, .02);
     R(1.0, .7, .06, mat(SEASON.wood, { rough: .55 }), 0, .95, 0, board, .03);
     R(1.18, .05, .28, ROOF, 0, 1.36, .02, board, .02).rotation.x = -.18;
-    const bC = document.createElement("canvas"); bC.width = 512; bC.height = 320; const bTex = new THREE.CanvasTexture(bC); bTex.encoding = THREE.sRGBEncoding; bTex.anisotropy = 4;
-    mesh(new THREE.PlaneGeometry(.86, .54), own(new THREE.MeshStandardMaterial({ map: bTex, roughness: .9 })), 0, .95, .036, board, false);
+    const bC = document.createElement("canvas"); bC.width = 512; bC.height = 320; const bTex = new THREE.CanvasTexture(bC); bTex.anisotropy = 4;
+    mesh(new THREE.PlaneGeometry(.86, .54), own(TM({ map: bTex, roughness: .9 })), 0, .95, .036, board, false);
     // 小菜地
     for (const [x, z, n] of [[-4, 3, "crop_pumpkin"], [-3, 3, "crop_carrot"], [-4, 4, "crops_wheatStageB"], [-3, 4, "crop_melon"]]) {
       yres(x, z); R(.9, .06, .9, mat(0x6e5440, { rough: .95 }), x, .03, z, yard, .03);
@@ -583,7 +595,7 @@ var Island = (function () {
       const g = new THREE.Group(); g.position.set(x, y, z); (p || scene).add(g);
       R(.34, .08, .34, stoneLampM, 0, .04, 0, g, .03); Cy(.07, .09, .4, stoneLampM, 0, .28, 0, g, 12);
       R(.3, .06, .3, stoneLampM, 0, .51, 0, g, .025);
-      Sp(.075, glowMat(0xff9d45, 2.6, { color: 0xffe9c8 }), 0, .62, 0, g);
+      Sp(.075, glowMat(0xffd391, 1.1, { color: 0xffe9c8 }), 0, .62, 0, g);
       for (const [dx, dz] of [[-.11, -.11], [.11, -.11], [-.11, .11], [.11, .11]]) R(.05, .18, .05, stoneLampM, dx, .62, dz, g, .015);
       mesh(coneG(.3, .2, 4), stoneLampM, 0, .8, 0, g).rotation.y = Math.PI / 4;
       Sp(.04, stoneLampM, 0, .93, 0, g);
@@ -624,10 +636,10 @@ var Island = (function () {
     }
     reserve(7, -7); const fire = new THREE.Group(); fire.position.set(7.5, 0, -6.5); scene.add(fire);
     K("campfire_stones", 0, 0, 0, { s: 1.5, p: fire }); K("campfire_logs", 0, .03, 0, { s: 1.6, p: fire });
-    const flameM = glowMat(0xff8a3a, 3.2, { color: 0xffb060, day: .9, breathe: 0, fire: true });
+    const flameM = glowMat(0xffa04a, 1.2, { color: 0xffb060, day: .5, breathe: 0, fire: true });
     const flames = [];
     for (const [x, z, s] of [[0, 0, 1], [.06, .04, .7], [-.05, -.03, .6]]) flames.push(mesh(coneG(+(.09 * s).toFixed(3), +(.3 * s).toFixed(3), 12), flameM, x, .14 * s + .05, z, fire, false));
-    pointLight(fire, 0, .5, 0, .7, 2.6, true); // 第 4 个点光源
+    pointLight(fire, 0, .5, 0, .35, 2.2, true); // 第 4 个点光源
     fire.userData.what = "camp";
     reserve(8, -6); K("log", 8.4, 0, -6.4, { s: 1.5, r: .3 });
     reserve(6, -7); K("log", 6.6, 0, -6.7, { s: 1.5, r: 1.8 });
@@ -699,7 +711,7 @@ var Island = (function () {
       for (let i = 0; i < 6; i++) { const hh = .2 + (i % 3) * .05; const g = new THREE.ConeGeometry(.014, hh, 4, 1); g.translate(0, hh / 2, 0); g.rotateZ((i - 2.5) * .12); g.rotateY(i * 1.1); g.translate(Math.cos(i * 2.1) * .03, 0, Math.sin(i * 2.1) * .03); parts.push(g); }
       return THREE.BufferGeometryUtils.mergeBufferGeometries(parts);
     })();
-    const grassM = windy(own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .85 })));
+    const grassM = windy(own(TM({ color: 0xffffff, roughness: .85 })));
     const grassSpots = [];
     const GN = HIGH ? 1500 : 600;
     for (let i = 0; i < GN * 3 && grassSpots.length < GN; i++) {
@@ -730,7 +742,7 @@ var Island = (function () {
     // 水洼（下雨时出现）
     const puddles = [];
     for (const [x, z, sx, sz] of [[-7, 2, .75, .4], [-3, 5, .5, .3], [-9, 6, .6, .35], [5, 1, .5, .3], [-3, -2, .6, .3]]) {
-      const m = new THREE.Mesh(new THREE.CircleGeometry(1, 32), own(new THREE.MeshPhysicalMaterial({ color: col(0x8a96a0), roughness: .02, metalness: 0, transparent: true, opacity: 0, depthWrite: false, clearcoat: 1 })));
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1, 32), own(TM({ color: col(0x9fbbe0), transparent: true, opacity: 0, depthWrite: false })));
       m.rotation.x = -Math.PI / 2; m.scale.set(sx, sz, 1); m.position.set(x, bump(x, z) + .012, z); m.raycast = () => {}; scene.add(m); puddles.push(m);
     }
 
@@ -741,7 +753,7 @@ var Island = (function () {
       pot(g) { K("pot_large", 0, 0, 0, { s: .9, p: g }); K("flower_redA", -.1, .15, 0, { s: 1.3, p: g }); K("flower_yellowC", .12, .15, .05, { s: 1.1, p: g }); },
       bench(g) { K("bench", 0, 0, 0, { s: 2, p: g }); },
       lantern(g) { stoneLamp(0, 0, g).position.set(0, 0, 0); },
-      lamp(g) { Cy(.03, .045, 1.2, lampPostM, 0, .6, 0, g, 12); R(.17, .2, .17, lampGlassM, 0, 1.3, 0, g, .02); Sp(.05, glowMat(0xff9d45, 2.4, { color: 0xffe9c8 }), 0, 1.3, 0, g); mesh(coneG(.15, .1, 4), lampPostM, 0, 1.45, 0, g).rotation.y = Math.PI / 4; },
+      lamp(g) { Cy(.03, .045, 1.2, lampPostM, 0, .6, 0, g, 12); R(.17, .2, .17, lampGlassM, 0, 1.3, 0, g, .02); Sp(.05, glowMat(0xffd391, 1.0, { color: 0xffe9c8 }), 0, 1.3, 0, g); mesh(coneG(.15, .1, 4), lampPostM, 0, 1.45, 0, g).rotation.y = Math.PI / 4; },
     };
 
     /* ================= 状态 ================= */
@@ -813,7 +825,7 @@ var Island = (function () {
       }
       g.fillStyle = "rgba(240,128,120,.42)"; for (const dx of [-40, 40]) { g.beginPath(); g.ellipse(cx + dx, ey + 17, 10, 5.5, 0, 0, 7); g.fill(); }
       g.strokeStyle = "#7a3b32"; g.lineWidth = 3; g.lineCap = "round"; g.beginPath(); g.arc(cx - 4, ey + 14, 4, .15, Math.PI - .15); g.stroke(); g.beginPath(); g.arc(cx + 4, ey + 14, 4, .15, Math.PI - .15); g.stroke();
-      const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+      const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
     }
     function makePerson() {
       const g = new THREE.Group(); scene.add(g);
@@ -826,13 +838,13 @@ var Island = (function () {
       const armL = Sp(.065, sweater, -.2, .32, 0, body); armL.scale.set(.8, 1.3, .8);
       const armR = Sp(.065, sweater, .2, .32, 0, body); armR.scale.set(.8, 1.3, .8);
       const faces = [faceTex(false), faceTex(true)];
-      const headM = own(new THREE.MeshStandardMaterial({ map: faces[0], roughness: .6 }));
+      const headM = own(TM({ map: faces[0], roughness: .6 }));
       mesh(new THREE.SphereGeometry(.2, 32, 24), headM, 0, .68, 0, body);
       mesh(new THREE.SphereGeometry(.212, 32, 20, 0, Math.PI * 2, 0, Math.PI * .5), hairM, 0, .7, -.012, body).rotation.x = -.38;
       Sp(.07, hairM, 0, .87, -.02, body).scale.set(1.2, .7, 1);
       const umb = new THREE.Group(); umb.position.set(.14, 0, 0); g.add(umb);
       Cy(.01, .01, .9, mat(0xd9d4cc, { rough: .3, metal: .5 }), 0, .78, 0, umb, 8);
-      const can = mesh(new THREE.SphereGeometry(.5, 24, 8, 0, Math.PI * 2, 0, Math.PI * .32), own(new THREE.MeshPhysicalMaterial({ color: col(0xd6e3ea), roughness: .1, transparent: true, opacity: .45, side: THREE.DoubleSide, depthWrite: false })), 0, .78, 0, umb, false);
+      const can = mesh(new THREE.SphereGeometry(.5, 24, 8, 0, Math.PI * 2, 0, Math.PI * .32), own(TM({ color: col(0xd6e3ea), roughness: .1, transparent: true, opacity: .45, side: THREE.DoubleSide, depthWrite: false })), 0, .78, 0, umb, false);
       g.userData.who = "me"; pickables.push(g);
       return { g, body, footL, footR, armL, armR, headM, faces, umb, can, x: -7, z: 2, y: 0, path: [], blinkAt: 0 };
     }
@@ -840,7 +852,7 @@ var Island = (function () {
     // 黑色孟买猫，金色眼睛
     function makeCat() {
       const g = new THREE.Group(); scene.add(g);
-      const fur = mat(0x1d1b20, { rough: .42 }), eye = own(new THREE.MeshStandardMaterial({ color: col(0xf2b632), emissive: col(0xf2a320), emissiveIntensity: .25, roughness: .2 }));
+      const fur = mat(0x1d1b20, { rough: .42 }), eye = own(TM({ color: col(0xf2b632), emissive: col(0xf2a320), emissiveIntensity: .25, roughness: .2 }));
       Sp(.14, fur, 0, .19, 0, g).scale.set(.9, .82, 1.55);
       const head = new THREE.Group(); head.position.set(0, .3, .2); g.add(head);
       Sp(.11, fur, 0, 0, 0, head).scale.set(1.05, .95, 1);
@@ -934,36 +946,15 @@ var Island = (function () {
     }
 
     /* ================= 后期：HDR → 选择性泛光 → ACES + sRGB ================= */
-    let composer = null, bloom = null, finalPass = null;
+    let composer = null, bloom = null;
     if (usePost && THREE.EffectComposer && THREE.UnrealBloomPass) {
       try {
-        const opts = { type: THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
-        const ms = renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget;
-        const rt = ms ? new THREE.WebGLMultisampleRenderTarget(1, 1, opts) : new THREE.WebGLRenderTarget(1, 1, opts);
-        if (ms) rt.samples = 4;
-        composer = new THREE.EffectComposer(renderer, rt);
+        composer = new THREE.EffectComposer(renderer);
         composer.addPass(new THREE.RenderPass(scene, cam));
-        // 阈值 1.0：只有比白还亮的东西（灯泡、窗户、火）会泛光，被照亮的地面不会
-        bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0, .45, 1.0); composer.addPass(bloom);
-        finalPass = new THREE.ShaderPass({
-          uniforms: { tDiffuse: { value: null }, exposure: { value: 1 } },
-          vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-          fragmentShader: [
-            "uniform sampler2D tDiffuse; uniform float exposure; varying vec2 vUv;",
-            "vec3 RRTAndODTFit(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }",
-            "vec3 aces(vec3 c){ const mat3 I = mat3(vec3(0.59719,0.07600,0.02840),vec3(0.35458,0.90834,0.13383),vec3(0.04823,0.01566,0.83777));",
-            "  const mat3 O = mat3(vec3(1.60475,-0.10208,-0.00327),vec3(-0.53108,1.10813,-0.07276),vec3(-0.07367,-0.00605,1.07602));",
-            "  c *= exposure / 0.6; c = I * c; c = RRTAndODTFit(c); c = O * c; return clamp(c, 0.0, 1.0); }",
-            "vec3 toSRGB(vec3 c){ return mix(pow(c, vec3(0.41666)) * 1.055 - vec3(0.055), c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }",
-            "void main(){ vec4 t = texture2D(tDiffuse, vUv); vec3 c = toSRGB(aces(t.rgb));",
-            "  float v = smoothstep(1.15, .35, length(vUv - .5) * 1.35); c *= mix(.86, 1.0, v);",
-            "  gl_FragColor = vec4(c, 1.0); }",
-          ].join("\n"),
-        });
-        composer.addPass(finalPass);
-      } catch (e) { composer = null; finalPass = null; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputEncoding = THREE.sRGBEncoding; }
+        bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0, .3, .95); // 只有灯泡、窗户、火这么亮的东西会泛光
+        composer.addPass(bloom);
+      } catch (e) { composer = null; bloom = null; }
     }
-    function setExposure(v) { if (finalPass) finalPass.uniforms.exposure.value = v; else renderer.toneMappingExposure = v; }
     function resize() {
       VW = view.clientWidth || innerWidth; VH = view.clientHeight || innerHeight;
       const pr = Math.min(devicePixelRatio || 1, HIGH ? 2 : 1.25); renderer.setPixelRatio(pr); renderer.setSize(VW, VH, false);
@@ -1158,9 +1149,9 @@ var Island = (function () {
     // 秋天的落叶：慢慢转着飘下来
     const leafGeo = cached("leaf", () => { const s = new THREE.Shape(); s.moveTo(0, -.05); s.quadraticCurveTo(.045, 0, 0, .05); s.quadraticCurveTo(-.045, 0, 0, -.05); return new THREE.ShapeGeometry(s, 6); });
     const LN = HIGH ? 110 : 45;
-    const leafMesh = new THREE.InstancedMesh(leafGeo, own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .7, side: THREE.DoubleSide })), LN);
+    const leafMesh = new THREE.InstancedMesh(leafGeo, own(TM({ color: 0xffffff, roughness: .7, side: THREE.DoubleSide })), LN);
     const leaves = [];
-    for (let i = 0; i < LN; i++) { leaves.push({ x: (rnd() - .5) * 24, y: rnd() * 5, z: (rnd() - .5) * 24, vy: .25 + rnd() * .25, ph: rnd() * 6, sp: .8 + rnd() * 1.4 }); leafMesh.setColorAt(i, col(SEASON.foliage[i % SEASON.foliage.length])); }
+    for (let i = 0; i < LN; i++) { leaves.push({ x: (rnd() - .5) * 24, y: rnd() * 5, z: (rnd() - .5) * 24, vy: .25 + rnd() * .25, ph: rnd() * 6, sp: .8 + rnd() * 1.4 }); leafMesh.setColorAt(i, col([0xf2c14e, SEASON.accent, 0x82c06c][i % 3])); }
     leafMesh.castShadow = false; leafMesh.raycast = () => {}; leafMesh.frustumCulled = false; scene.add(leafMesh);
     function stepLeaves(dt, now) {
       const t = now / 1000;
@@ -1173,8 +1164,8 @@ var Island = (function () {
       });
       leafMesh.instanceMatrix.needsUpdate = true;
     }
-    const bulbM = own(new THREE.MeshStandardMaterial({ color: col(0xffe9c8), emissive: col(0xff9a3c), emissiveIntensity: 0, roughness: .3 }));
-    glows.push({ m: bulbM, base: 2.4, day: 0, phase: 0, breathe: .08 });
+    const bulbM = own(TM({ color: col(0xb9a98c), emissive: col(0xffd89a), emissiveIntensity: 0 }));
+    glows.push({ m: bulbM, base: 1.0, day: 0, phase: 0, breathe: .08 });
     const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(.032, 10, 8), bulbM, Math.max(1, bulbSpots.length));
     bulbSpots.forEach((p, i) => bulbs.setMatrixAt(i, tmpM.makeTranslation(p.x, p.y, p.z)));
     bulbs.castShadow = false; bulbs.raycast = () => {}; scene.add(bulbs);
@@ -1187,7 +1178,7 @@ var Island = (function () {
       rainK += ((isl.rain ? 1 : 0) - rainK) * Math.min(1, dt * 1.4);
       const on = rainK > .02;
       rainMat.opacity = rainK * .28; rainMesh.visible = on;
-      puddles.forEach(p => p.material.opacity = rainK * .55);
+      puddles.forEach(p => p.material.opacity = rainK * .32);
       me.umb.visible = rainK > .4;
       if (!on) { ripples.forEach(r => r.m.material.opacity = 0); return; }
       const spd = reduce ? .25 : 1;
@@ -1207,9 +1198,9 @@ var Island = (function () {
     let live = true, hours = 12;
     // [时刻, 天顶, 中间, 地平线]
     const KF = [
-      [0, "#070c22", "#111a3a", "#1f2c52"], [4.5, "#070c22", "#111a3a", "#1f2c52"], [6, "#26335f", "#7d6f8f", "#f0b48a"],
-      [8, "#5d97cf", "#9cc3e2", "#e3eef3"], [16, "#5d97cf", "#9cc3e2", "#e8eef0"], [17.3, "#2c4478", "#8c7fa6", "#f2a87a"],
-      [18.6, "#142250", "#3b3f72", "#c9876e"], [20, "#0b1433", "#16224a", "#2c3a64"], [24, "#070c22", "#111a3a", "#1f2c52"],
+      [0, "#141d44", "#1d2a5c", "#2d3b6e"], [4.5, "#141d44", "#1d2a5c", "#2d3b6e"], [6, "#e9a487", "#c3a3b8", "#8fa8d6"],
+      [8, "#79bde8", "#a9d4f2", "#d3ecfb"], [16, "#79bde8", "#a9d4f2", "#d3ecfb"], [17.6, "#e48a6c", "#b07c8f", "#6f6aa4"],
+      [19.2, "#1a2350", "#28336a", "#3a4580"], [24, "#141d44", "#1d2a5c", "#2d3b6e"],
     ];
     const cA = new THREE.Color(), cB = new THREE.Color();
     const lerpHex = (a, b, f) => "#" + cA.set(a).lerp(cB.set(b), f).getHexString();
@@ -1217,40 +1208,33 @@ var Island = (function () {
     const PER = T("i3.periods");
     const period = t => PER[t < 5 ? 0 : t < 8 ? 1 : t < 11 ? 2 : t < 14 ? 3 : t < 17 ? 4 : t < 19 ? 5 : 6];
     $("i3-marks").innerHTML = T("i3.marks").map(m => "<span>" + esc(m) + "</span>").join("");
-    let lampOn = 0, envNow = -1;
-    function setEnv(k) {
-      if (Math.abs(k - envNow) < .01) return; envNow = k;
-      allMats.forEach(m => { if (m.envMapIntensity !== undefined) m.envMapIntensity = k; });
-    }
+    let lampOn = 0;
     function applyTime(t, now) {
       const sa = (t - 6) / 12 * Math.PI, s = Math.sin(sa), day = clamp(s * 1.8 + .05, 0, 1) * (s > -.05 ? 1 : 0);
       const dusk = clamp(1 - Math.abs(t - 17.6) / 1.6, 0, 1) + clamp(1 - Math.abs(t - 6.4) / 1.2, 0, 1) * .7;
       let [tp, md, bt] = skyAt(t);
       if (rainK > .01) { tp = lerpHex(tp, "#232b3d", rainK * .45); md = lerpHex(md, "#38425a", rainK * .45); bt = lerpHex(bt, "#4a5268", rainK * .4); }
       paintSky(tp, md, bt);
-      scene.fog.color.copy(col(bt)).lerp(col(md), .55);
-      scene.fog.density = .0042 + rainK * .0025; // 远处淡淡地柔化，近处保持清楚
+      scene.fog.color.copy(col(bt));
+      scene.fog.density = .0035 + rainK * .002; // 远处淡淡地柔化，近处保持清楚
       starMat.opacity = clamp(1 - day * 2, 0, 1) * (1 - rainK) * .8;
-      if (s > -.02) {
-        sun.position.set(Math.cos(sa) * 26, Math.max(s, .18) * 34, 14);
-        sun.color.copy(col(0xfff3e2)).lerp(col(0xff9d5c), clamp(dusk * 1.1, 0, 1));
-        sun.intensity = (.55 + 1.05 * day) * (1 - .55 * rainK) * (1 - dusk * .25);
-      } else {
-        sun.position.set(-14, 30, -12); sun.color.copy(col(0x8fa4e0)); sun.intensity = .22 * (1 - .4 * rainK); // 月光
-      }
-      hemi.color.copy(col(0x3a4a7a)).lerp(col(0xdfe9f5), day); hemi.groundColor.copy(col(0x1c1e28)).lerp(col(0x7a7258), day);
-      hemi.intensity = (.14 + .32 * day) * (1 - .15 * rainK);
-      setEnv(+(.08 + .45 * day).toFixed(2));
-      const night = clamp(1 - day + rainK * .3, 0, 1);
-      lampOn = clamp((night - .35) / .4, 0, 1);
-      setExposure(.92 + (1 - day) * .14);
+      if (s > 0) {
+        sun.position.set(Math.cos(sa) * 24, Math.max(s, .3) * 32, 16);
+        sun.color.copy(col(0xffffff)).lerp(col(0xffa66b), 1 - clamp(s * 2.2, 0, 1));
+        sun.intensity = .3 + .45 * day + dusk * .35; // 傍晚的太阳暖一点、亮一点
+      } else { sun.position.set(-12, 28, -16); sun.color.copy(col(0xa9b8ee)); sun.intensity = .5; } // 月光
+      sun.intensity *= 1 - .4 * rainK;
+      hemi.color.copy(col(0x9aa8dc)).lerp(col(0xffffff), day); hemi.groundColor.copy(col(0x4c5878)).lerp(col(0x5a6a4a), day);
+      hemi.intensity = Math.max(.5, (.7 + .05 * day) * (1 - .1 * rainK)); // 夜里、雨天也看得清：环境光不低于 0.5
+      const night = clamp(1 - day + rainK * .35, 0, 1);
+      lampOn = clamp((night - .55) / .35, 0, 1);
       const tt = now / 1000;
       glows.forEach(g => {
         const br = 1 + Math.sin(tt * 1.3 + g.phase) * g.breathe;
         g.m.emissiveIntensity = (g.day + (1 - g.day) * lampOn) * g.base * (g.fire ? 1 : br);
       });
-      glassMat.opacity = .2 + lampOn * .2;
-      if (bloom) bloom.strength = lampOn * .85;
+      glassMat.opacity = .16 + lampOn * .12;
+      if (bloom) bloom.strength = lampOn * .35;
       const hh = Math.floor(t), mm = Math.floor((t - hh) * 60);
       $("i3-now").textContent = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0"); $("i3-period").textContent = period(t);
     }
@@ -1325,7 +1309,9 @@ var Island = (function () {
     me.g.position.set(me.x, 0, me.z); cat.g.position.set(cat.x, 0, cat.z);
     const qa = /area=(\w+)/.exec(location.hash), qt = /time=([\d.]+)/.exec(location.hash);
     if (qa && AREAS[qa[1]]) { const a = AREAS[qa[1]]; tgt.set(a.t[0], a.t[1], a.t[2]); dist = a.d; phi = a.phi; }
-    if (qt) { live = false; hours = clamp(+qt[1], 0, 23.99); $("i3-time").value = Math.round(hours * 60); $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); }
+    const freeze = h => { live = false; hours = clamp(h, 0, 23.99); $("i3-time").value = Math.round(hours * 60); $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); };
+    if (qt) freeze(+qt[1]);
+    else { const h = new Date().getHours(); if (h >= 21 || h < 5) freeze(18.5); } // 深夜打开时先显示傍晚 18:30，想看现在点「回到现在」
     resize();
     new MutationObserver(() => { if (!view.hidden) resize(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     requestAnimationFrame(loop);
