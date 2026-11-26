@@ -228,6 +228,9 @@ var I18n = (function () {
       "i3.area.orchard": "果园",
       "i3.area.all": "全岛",
       "i3.areasAria": "去哪个区域",
+      "i3.qHigh": "画质：高",
+      "i3.qLow": "画质：低",
+      "i3.qTitle": "高画质有泛光和更细的阴影；手机上卡的话换成低画质",
 
       "footnote": "数据只保存在这台电脑的浏览器里"
     },
@@ -445,6 +448,9 @@ var I18n = (function () {
       "i3.area.orchard": "Orchard",
       "i3.area.all": "Whole island",
       "i3.areasAria": "Go to an area",
+      "i3.qHigh": "Quality: high",
+      "i3.qLow": "Quality: low",
+      "i3.qTitle": "High quality adds glow and finer shadows; switch to low if it feels slow on a phone",
 
       "footnote": "Your data stays in this computer's browser"
     }
