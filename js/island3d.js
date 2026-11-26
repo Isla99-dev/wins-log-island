@@ -118,7 +118,8 @@ var Island = (function () {
           if (!t) { m.map.encoding = THREE.LinearEncoding; t = toon(0xffffff, { map: m.map }); texMat.set(m.map.uuid, t); }
           o.material = t;
         } else {
-          o.material = toon(PAL[m.name] != null ? PAL[m.name] : m.color.getHex());
+          const over = name.indexOf("bridge") === 0 && m.name === "stone" ? 0xc08a55 : null; // 木桥的桥面用木头色
+          o.material = toon(over != null ? over : PAL[m.name] != null ? PAL[m.name] : m.color.getHex());
         }
         o.castShadow = o.receiveShadow = true;
         outline(o, 38);
@@ -422,10 +423,20 @@ var Island = (function () {
     K("campfire_stones", 0, 0, 0, { s: 1.5, p: fire }); K("campfire_logs", 0, .03, 0, { s: 1.6, p: fire });
     const fireCore = S(.12, glow(0xffa04a, 0), 0, .16, 0, fire, 0); fireCore.scale.y = 1.5; fireCore.castShadow = false;
     const fireLight = new THREE.PointLight(0xff9a4a, 0, 3, 2); fireLight.position.y = .5; fire.add(fireLight);
-    lightsNight.push([fireLight, .55]); flick.push({ l: fireLight, m: fireCore.material, base: .55, fire: true });
+    lightsNight.push([fireLight, .55]); fire.userData.what = "camp"; flick.push({ l: fireLight, m: fireCore.material, base: .55, fire: true });
     reserve(8, -6); K("log", 8.4, 0, -6.4, { s: 1.5, r: .3 });
     reserve(6, -7); K("log", 6.6, 0, -6.7, { s: 1.5, r: 1.8 });
-    reserve(9, -8); K("tent_detailedOpen", 9, 0, -8, { s: 2.2, r: -Math.PI / 4 });
+    // 小帐篷：三角形的布 + 黑黑的门口
+    reserve(9, -8);
+    const tent = new THREE.Group(); tent.position.set(9.1, 0, -8.1); tent.rotation.y = -Math.PI / 4 - Math.PI / 2; scene.add(tent);
+    const tShape = new THREE.Shape(); tShape.moveTo(-.55, 0); tShape.lineTo(.55, 0); tShape.lineTo(0, .78); tShape.closePath();
+    const tGeo = new THREE.ExtrudeGeometry(tShape, { depth: 1.1, bevelEnabled: false }); tGeo.translate(0, 0, -.55);
+    mesh(tGeo, 0xe0795a, 0, 0, 0, tent);
+    const doorS = new THREE.Shape(); doorS.moveTo(-.26, 0); doorS.lineTo(.26, 0); doorS.lineTo(0, .5); doorS.closePath();
+    mesh(new THREE.ShapeGeometry(doorS), basic(0x3a2a2a), 0, .01, .56, tent, false);
+    C(.025, .025, .95, 6, 0x6b4a33, 0, .45, .6, tent, false); C(.025, .025, .95, 6, 0x6b4a33, 0, .45, -.6, tent, false);
+    B(1.4, .02, 1.5, 0xc9b58f, 0, .01, .1, tent, false);
+    tent.userData.what = "camp";
     reserve(8, -8); K("bedroll-packed", 8, 0, -7.7, { s: 2 });
 
     // —— 小山坡和观景台 ——
@@ -506,7 +517,7 @@ var Island = (function () {
 
     /* ================= state ================= */
     const pickables = terrain.slice();
-    pickables.push(house, board, bridge, dock, deck, ...signs);
+    pickables.push(house, board, bridge, dock, deck, fire, tent, ...signs);
     terrain.forEach(m => m.userData.what = "ground");
     house.userData.what = "house"; board.userData.what = "board";
     const grows = [], bounces = [];
@@ -625,8 +636,47 @@ var Island = (function () {
 
     /* ================= camera + input ================= */
     let W = 1, H = 1, theta = Math.PI / 4, phi = .66, dist = 62;
-    const DMIN = 10, DMAX = 100;
+    const DMIN = 4.5, DMAX = 100;
     const tgt = new THREE.Vector3(0, -.3, 0);
+    // 各个区域：镜头看哪里、离多远
+    const AREAS = {
+      all: { t: [0, -.3, 0], d: 62, phi: .66 },
+      yard: { t: [-6.5, .4, 0.5], d: 19, phi: .55 },
+      orchard: { t: [-6, 0, 9], d: 19, phi: .6 },
+      stream: { t: [1.5, 0, 2], d: 15, phi: .5 },
+      forest: { t: [8, .3, -7], d: 19, phi: .6 },
+      hill: { t: [-9, 1.6, -9], d: 19, phi: .55 },
+      beach: { t: [7, 0, 8.5], d: 18, phi: .5 },
+    };
+    // 镜头平滑飞过去
+    let fly = null;
+    const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    function flyTo(t, d, ph, th) {
+      let dth = th == null ? 0 : Math.atan2(Math.sin(th - theta), Math.cos(th - theta));
+      fly = { t0: performance.now(), dur: reduce ? 1 : 950, from: { t: tgt.clone(), d: dist, phi, theta }, to: { t: new THREE.Vector3(t[0], t[1], t[2]), d, phi: ph == null ? phi : ph, theta: theta + dth } };
+    }
+    function flyArea(id) {
+      const a = AREAS[id]; if (!a) return;
+      flyTo(a.t, a.d, a.phi);
+      $("i3-areas").querySelectorAll(".i3-btn").forEach(b => b.classList.toggle("is-on", b.dataset.area === id));
+    }
+    function stepFly(now) {
+      if (!fly) return;
+      const k = Math.min(1, (now - fly.t0) / fly.dur), e = ease(k), f = fly.from, t = fly.to;
+      tgt.lerpVectors(f.t, t.t, e); dist = f.d + (t.d - f.d) * e; phi = f.phi + (t.phi - f.phi) * e; theta = f.theta + (t.theta - f.theta) * e;
+      updateCam(); if (k >= 1) fly = null;
+    }
+    function stopFly() { fly = null; $("i3-areas").querySelectorAll(".is-on").forEach(b => b.classList.remove("is-on")); }
+    // 平移：在地面上移动镜头看的点
+    function pan(dx, dy) {
+      const k = dist * .0016 * Math.max(1, 1.05 / (W / H));
+      const rx = Math.cos(theta), rz = -Math.sin(theta), fx = -Math.sin(theta), fz = -Math.cos(theta);
+      tgt.x = clamp(tgt.x - (dx * rx - dy * fx) * k, -15, 15);
+      tgt.z = clamp(tgt.z - (dx * rz - dy * fz) * k, -15, 15);
+      updateCam();
+    }
+    $("i3-areas").innerHTML = ["all", "yard", "orchard", "stream", "forest", "hill", "beach"].map(id => '<button class="i3-btn" type="button" data-area="' + id + '">' + esc(T("i3.area." + id)) + "</button>").join("");
+    $("i3-areas").addEventListener("click", e => { const b = e.target.closest("[data-area]"); if (b) flyArea(b.dataset.area); });
     const panel = $("i3-panel");
     function updateCam() {
       const a = W / H, d = dist * Math.max(1, 1.05 / a);
@@ -658,27 +708,49 @@ var Island = (function () {
     }
     function owner(o) { while (o) { if (o.userData.obj || o.userData.who || o.userData.what) return o; o = o.parent; } return null; }
 
-    const ptrs = new Map(); let downAt = null, dragging = false, pinch0 = 0, dist0 = 30;
+    // 左键拖：转；右键 / Shift + 左键 / 双指拖：平移；滚轮 / 双指捏：拉近拉远
+    const ptrs = new Map(); let downAt = null, dragging = false, panning = false, pinch0 = 0, dist0 = 30, mid0 = null;
+    const mid = () => { const [p, q] = [...ptrs.values()]; return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, d: Math.hypot(p.x - q.x, p.y - q.y) }; };
+    cv.addEventListener("contextmenu", e => e.preventDefault());
     cv.addEventListener("pointerdown", e => {
       cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (ptrs.size === 1) { downAt = { x: e.clientX, y: e.clientY }; dragging = false; }
-      if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; pinch0 = Math.hypot(p.x - q.x, p.y - q.y); dist0 = dist; downAt = null; }
+      if (ptrs.size === 1) { downAt = { x: e.clientX, y: e.clientY }; dragging = false; panning = e.button === 2 || e.shiftKey; }
+      if (ptrs.size === 2) { const m = mid(); pinch0 = m.d; mid0 = m; dist0 = dist; downAt = null; stopFly(); }
     });
     cv.addEventListener("pointermove", e => {
       if (!ptrs.has(e.pointerId)) { if (placing) hover(e); return; }
       const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; dist = clamp(dist0 * pinch0 / Math.max(1, Math.hypot(p.x - q.x, p.y - q.y)), DMIN, DMAX); updateCam(); return; }
-      if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) { dragging = true; cv.classList.add("is-drag"); }
-      if (dragging) { theta -= (e.clientX - prev.x) * .007; phi = clamp(phi + (e.clientY - prev.y) * .005, .22, 1.25); updateCam(); }
+      if (ptrs.size === 2) { const m = mid(); dist = clamp(dist0 * pinch0 / Math.max(1, m.d), DMIN, DMAX); pan(m.x - mid0.x, m.y - mid0.y); mid0 = m; return; }
+      if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) { if (!dragging) stopFly(); dragging = true; cv.classList.add("is-drag"); }
+      if (dragging) {
+        if (panning) pan(e.clientX - prev.x, e.clientY - prev.y);
+        else { theta -= (e.clientX - prev.x) * .007; phi = clamp(phi + (e.clientY - prev.y) * .005, .18, 1.3); updateCam(); }
+      }
       if (placing) hover(e);
     });
-    cv.addEventListener("pointerup", e => { const wasClick = downAt && !dragging && ptrs.size === 1; ptrs.delete(e.pointerId); cv.classList.remove("is-drag"); if (wasClick) click(e); if (!ptrs.size) { downAt = null; dragging = false; } });
-    cv.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
-    cv.addEventListener("wheel", e => { e.preventDefault(); dist = clamp(dist * (1 + e.deltaY * .0012), DMIN, DMAX); updateCam(); }, { passive: false });
+    let lastClick = 0;
+    cv.addEventListener("pointerup", e => {
+      const wasClick = downAt && !dragging && ptrs.size === 1 && e.button === 0; ptrs.delete(e.pointerId); cv.classList.remove("is-drag");
+      if (wasClick) { const now = performance.now(); if (now - lastClick < 320 && !placing) dblClick(e); else click(e); lastClick = now; }
+      if (!ptrs.size) { downAt = null; dragging = false; panning = false; }
+    });
+    cv.addEventListener("pointercancel", e => { ptrs.delete(e.pointerId); if (!ptrs.size) { downAt = null; dragging = false; panning = false; } });
+    // 滚轮拉近时，朝鼠标指着的地方靠过去一点
+    cv.addEventListener("wheel", e => {
+      e.preventDefault(); stopFly();
+      const nd = clamp(dist * (1 + clamp(e.deltaY, -80, 80) * .0015), DMIN, DMAX);
+      if (nd < dist) { aim(e); const hs = ray.intersectObjects(terrain, false); if (hs.length) { const p = hs[0].point, k = 1 - nd / dist; tgt.x += (p.x - tgt.x) * k; tgt.z += (p.z - tgt.z) * k; tgt.y += (p.y - tgt.y) * k; } }
+      dist = nd; updateCam();
+    }, { passive: false });
+    // 双击地面：镜头飞过去看
+    function dblClick(e) {
+      aim(e); const c = groundCell(); if (!c) return;
+      flyTo([c.x, c.h, c.z], Math.min(dist, 14), clamp(phi, .4, .7));
+    }
     $("i3-rotl").onclick = () => { theta += Math.PI / 4; updateCam(); };
     $("i3-rotr").onclick = () => { theta -= Math.PI / 4; updateCam(); };
-    $("i3-zin").onclick = () => { dist = clamp(dist / 1.25, DMIN, DMAX); updateCam(); };
-    $("i3-zout").onclick = () => { dist = clamp(dist * 1.25, DMIN, DMAX); updateCam(); };
+    $("i3-zin").onclick = () => { stopFly(); dist = clamp(dist / 1.3, DMIN, DMAX); updateCam(); };
+    $("i3-zout").onclick = () => { stopFly(); dist = clamp(dist * 1.3, DMIN, DMAX); updateCam(); };
     function setRain(v) { isl.rain = v; $("i3-rain").textContent = T(v ? "i3.rainOff" : "i3.rainOn"); $("i3-rain").setAttribute("aria-pressed", v); Store.save(); }
     $("i3-rain").onclick = () => setRain(!isl.rain); setRain(isl.rain);
     function bare(v) { view.classList.toggle("is-bare", v); updateCam(); }
@@ -690,6 +762,8 @@ var Island = (function () {
       if (e.key === "h" || e.key === "H") bare(!view.classList.contains("is-bare"));
       if (e.key === "ArrowLeft") { theta += .2; updateCam(); }
       if (e.key === "ArrowRight") { theta -= .2; updateCam(); }
+      const k = { w: [0, 40], s: [0, -40], a: [40, 0], d: [-40, 0] }[e.key.toLowerCase()];
+      if (k) { stopFly(); pan(k[0], k[1]); }
     });
 
     /* placing */
@@ -725,10 +799,11 @@ var Island = (function () {
       const lines = T("i3.lines"), what = own.userData.what;
       if (own.userData.who === "me") { bounce(me.g); say(top(me.g, 1.1), lines[Math.floor(Math.random() * lines.length)]); return; }
       if (own.userData.who === "cat") { bounce(cat.g); say(top(cat.g, .5), T("i3.meow")); return; }
-      if (what === "house") { bounce(house); say(top(house, 3.1), T("i3.house")); return; }
+      if (what === "house") { bounce(house); say(top(house, 3.1), T("i3.house")); flyArea("yard"); return; }
       if (what === "board") { const d = Store.winsOf(); say(top(board, 1.6), d.length ? T("i3.boardDone", { list: d.map(t => t.text).join(T("i3.sep")) }) : T("i3.boardNone")); return; }
-      if (what === "sign") { bounce(own); say(top(own, 1.4), T("i3.signTo", { name: T("i3.area." + own.userData.to) })); return; }
-      if (what === "bridge" || what === "dock" || what === "lookout") { say(top(own, 1.2), T("i3.area." + (what === "lookout" ? "hill" : what === "dock" ? "beach" : "stream"))); }
+      if (what === "sign") { bounce(own); say(top(own, 1.4), T("i3.signTo", { name: T("i3.area." + own.userData.to) })); flyArea(own.userData.to); return; }
+      const area = { bridge: "stream", dock: "beach", lookout: "hill", camp: "forest" }[what];
+      if (area) { say(top(own, 1.2), T("i3.area." + area)); flyArea(area); }
       if (own.userData.obj) {
         const o = own.userData.obj; bounce(own); const t = top(own, o.type === "tree" ? 1.9 : o.type === "lamp" ? 1.7 : .9);
         if (o.type === "tree") say(t, T("i3.treeLabel", { text: o.label, date: fmtDate(o.date) }));
@@ -835,7 +910,7 @@ var Island = (function () {
       ripples.forEach(r => {
         r.t += dt * 1.25;
         if (r.t > 1) { r.t = 0; r.f = false; const c = rippleSpots[Math.floor(Math.random() * rippleSpots.length)]; r.m.position.set(c.x + (Math.random() - .5) * .9, c.res === "water" ? -.09 : c.h + .012, c.z + (Math.random() - .5) * .9); }
-        r.m.scale.setScalar(1 + r.t * 3.2); r.m.material.opacity = (1 - r.t) * .6 * rainK;
+        r.m.scale.setScalar(1 + r.t * 3.2); r.m.material.opacity = (1 - r.t) * .45 * rainK;
       });
       drips.forEach(d => {
         d.m.visible = true; if (d.wait > 0) { d.wait -= dt; d.m.visible = false; return; } d.v += 9.8 * dt * spd; d.y -= d.v * dt;
@@ -906,6 +981,7 @@ var Island = (function () {
       requestAnimationFrame(loop);
       const dt = Math.min(.05, (now - last) / 1000); last = now;
       if (view.hidden) return; // 在看世界地图时不画
+      stepFly(now);
       if (live) { const d = new Date(); hours = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600; const m = d.getHours() * 60 + d.getMinutes(); if (m !== lastMin) { lastMin = m; $("i3-time").value = m; } }
       stepWeather(dt);
       applyTime(hours);
@@ -922,10 +998,17 @@ var Island = (function () {
       if (composer) composer.render(); else renderer.render(scene, cam);
     }
     me.g.position.set(me.x, 0, me.z); cat.g.position.set(cat.x, 0, cat.z);
+    // 网址后面加 #area=forest 直接看某个区域，加 #time=22 看某个时间（方便截图）
+    const qa = /area=(\w+)/.exec(location.hash), qt = /time=([\d.]+)/.exec(location.hash);
+    if (qa && AREAS[qa[1]]) { const a = AREAS[qa[1]]; tgt.set(a.t[0], a.t[1], a.t[2]); dist = a.d; phi = a.phi; }
+    if (qt) { live = false; hours = clamp(+qt[1], 0, 23.99); $("i3-time").value = Math.round(hours * 60); $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); }
     resize();
     new MutationObserver(() => { if (!view.hidden) resize(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     requestAnimationFrame(loop);
+    // 只读：方便检查镜头位置
+    camInfo = () => ({ x: +tgt.x.toFixed(2), y: +tgt.y.toFixed(2), z: +tgt.z.toFixed(2), dist: +dist.toFixed(2), theta: +theta.toFixed(2), phi: +phi.toFixed(2) });
   }
 
-  return { init: init };
+  let camInfo = () => null;
+  return { init: init, camInfo: () => camInfo() };
 })();

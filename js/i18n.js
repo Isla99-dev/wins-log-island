@@ -204,7 +204,7 @@ var I18n = (function () {
       "i3.sit": "坐一会儿",
       "i3.lines": ["今天也做了不少事", "慢慢来，比较快", "雨声好好听", "要不要歇一下？", "这些树都是你种的哦"],
       "i3.tipTitle": "欢迎回到小岛",
-      "i3.tipBody": "拖动旋转，上下拖改变角度，滚轮或双指拉近。点地面让小人走过去，点树看它是哪件事种下的。完成任务，岛上就会长出一棵树。",
+      "i3.tipBody": "左键拖动旋转，右键（或双指）拖动平移，滚轮或双指捏合拉近。点下面的区域名、路牌或小屋，镜头会飞过去；双击地面也能飞过去看。点地面让小人走过去，点树看它是哪件事种下的。完成任务，岛上就会长出一棵树。",
       "i3.tipOk": "开始",
       "i3.item.flowers": "花丛",
       "i3.item.flowersNote": "五朵小花，可以走过去",
@@ -227,6 +227,7 @@ var I18n = (function () {
       "i3.area.beach": "沙滩和小码头",
       "i3.area.orchard": "果园",
       "i3.area.all": "全岛",
+      "i3.areasAria": "去哪个区域",
 
       "footnote": "数据只保存在这台电脑的浏览器里"
     },
@@ -420,7 +421,7 @@ var I18n = (function () {
       "i3.sit": "Time for a little sit",
       "i3.lines": ["You've done quite a bit today", "Slow and steady", "I love the sound of rain", "Want to take a break?", "You planted all these trees"],
       "i3.tipTitle": "Welcome back to the island",
-      "i3.tipBody": "Drag to turn, drag up and down to tilt, scroll or pinch to zoom. Click the ground to walk there, and click a tree to see which task planted it. Finish a task and a tree grows.",
+      "i3.tipBody": "Left-drag to turn, right-drag (or two fingers) to pan, scroll or pinch to zoom. Click an area name below, a signpost or the cabin and the camera flies there; double-click the ground to fly there too. Click the ground to walk, and click a tree to see which task planted it. Finish a task and a tree grows.",
       "i3.tipOk": "Start",
       "i3.item.flowers": "Flower patch",
       "i3.item.flowersNote": "Five little flowers you can walk through",
@@ -443,6 +444,7 @@ var I18n = (function () {
       "i3.area.beach": "Beach & dock",
       "i3.area.orchard": "Orchard",
       "i3.area.all": "Whole island",
+      "i3.areasAria": "Go to an area",
 
       "footnote": "Your data stays in this computer's browser"
     }
