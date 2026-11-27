@@ -18,6 +18,9 @@
     I18n.set(I18n.isEn() ? "zh" : "en");
   });
 
+  // ---- 版面：横屏 / 竖屏（要最先定下来，别的模块量尺寸时看它） ----
+  Layout.init();
+
   // ---- 旧版数据导入 ----
   Store.importV1();
 
@@ -39,6 +42,9 @@
 
   // ---- 历史、本月；没有记录时提示可以从备份导入 ----
   History.init();
+
+  // ---- 竖屏版面的底部抽屉 ----
+  Sheet.init();
 
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab[data-view]");

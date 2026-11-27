@@ -880,11 +880,13 @@ var Island = (function () {
     }
 
     /* ================= 镜头 ================= */
-    let VW = 1, VH = 1, theta = Math.PI / 4, phi = .62, dist = 60;
+    // 竖屏（又高又窄）：把小岛转正一点、镜头更往上看，这样岛能撑满屏幕的宽度，不会缩成窄窄一条
+    const PORTRAIT = document.body.classList.contains("layout-portrait");
+    let VW = 1, VH = 1, theta = PORTRAIT ? .35 : Math.PI / 4, phi = PORTRAIT ? .86 : .62, dist = PORTRAIT ? 50 : 60;
     const DMIN = 4.5, DMAX = 100;
     const tgt = new THREE.Vector3(0, -.3, 0);
     const AREAS = {
-      all: { t: [0, -.3, 0], d: 60, phi: .62 },
+      all: { t: [0, -.3, 0], d: PORTRAIT ? 50 : 60, phi: PORTRAIT ? .86 : .62 },
       yard: { t: [-6.5, .5, 0.5], d: 17, phi: .5 },
       orchard: { t: [-6, 0, 9], d: 19, phi: .58 },
       stream: { t: [1.5, 0, 2], d: 15, phi: .5 },
@@ -926,7 +928,12 @@ var Island = (function () {
       cam.position.set(tgt.x + Math.sin(theta) * Math.cos(phi) * d, tgt.y + Math.sin(phi) * d, tgt.z + Math.cos(theta) * Math.cos(phi) * d);
       cam.lookAt(tgt);
       const bare = view.classList.contains("is-bare");
-      if (VW > 820 && !bare) cam.setViewOffset(VW, VH, (panel.offsetWidth + 14) / 2 - 135, -20, VW, VH); else cam.clearViewOffset();
+      // 横屏版面：小岛往左让出右边的侧边栏。
+      // 竖屏版面：小岛占满整个屏幕，把小岛放在上面约 78% 的中间，这样抽屉收起时整座岛都露着、不被底部的一行和控制条挡住；
+      //           抽屉展开时只是盖住下半部分，小岛不缩放。
+      if (document.body.classList.contains("layout-portrait")) {
+        if (bare) cam.clearViewOffset(); else cam.setViewOffset(VW, VH, 0, Math.round(VH * (.5 - .39)), VW, VH);
+      } else if (VW > 700 && !bare) cam.setViewOffset(VW, VH, (panel.offsetWidth + 14) / 2 - 135, -20, VW, VH); else cam.clearViewOffset();
       cam.updateProjectionMatrix();
     }
 
@@ -941,12 +948,14 @@ var Island = (function () {
       } catch (e) { composer = null; bloom = null; }
     }
     function resize() {
-      VW = view.clientWidth || innerWidth; VH = view.clientHeight || innerHeight;
+      VW = cv.clientWidth || view.clientWidth || innerWidth; VH = cv.clientHeight || view.clientHeight || innerHeight; // 画布多大就画多大（竖屏时只占上半屏）
       const pr = Math.min(devicePixelRatio || 1, HIGH ? 2 : 1.25); renderer.setPixelRatio(pr); renderer.setSize(VW, VH, false);
       if (composer) { composer.setPixelRatio(pr); composer.setSize(VW, VH); }
       updateCam();
     }
     addEventListener("resize", resize);
+    if (window.ResizeObserver) new ResizeObserver(() => { if (!view.hidden) resize(); }).observe(cv); // 切换版面、「只看小岛」时画布大小会变
+    document.addEventListener("layout:change", () => requestAnimationFrame(resize));
 
     /* ================= 输入 ================= */
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -1023,6 +1032,7 @@ var Island = (function () {
     function hover(e) { aim(e); const c = groundCell(); if (!c) { hl.visible = false; return; } hl.visible = true; hl.position.set(c.x, c.h + bump(c.x, c.z) + .03, c.z); hl.material.color.setHex(canPlace(c) ? 0x9be38a : 0xe8826e); }
     function startPlacing(item) {
       placing = item; cv.classList.add("is-place");
+      document.dispatchEvent(new CustomEvent("sheet:collapse")); // 竖屏：把抽屉收起来，才看得到要放的地方
       $("i3-ptext").textContent = T("i3.placeHint", { name: itemName(item.id) }); $("i3-placing").hidden = false;
     }
     function stopPlacing() { placing = null; hl.visible = false; cv.classList.remove("is-place"); $("i3-placing").hidden = true; }
@@ -1086,6 +1096,7 @@ var Island = (function () {
     panel.querySelector(".i3-tabs").addEventListener("click", e => { const b = e.target.closest(".i3-tab"); if (b) showPage(b.dataset.page); });
     document.addEventListener("island:page", e => { const p = e.detail && e.detail.page; if (p) { showPage(p); const el = panel.querySelector('.i3-page[data-page="' + p + '"]'); if (el) el.scrollTop = 0; } });
     document.addEventListener("wins:ask", () => showPage("helper"));
+    document.addEventListener("companion:start", e => { const d = e.detail || {}; if (d.text) say(top(me.g, 1.25), T("sheet.start", { text: d.text })); }); // 点「下一件」：小人先应一声（陪伴模式在第 2 期）
 
     function drawBoard() {
       const g = bC.getContext("2d"), d = Store.winsOf();

@@ -45,9 +45,20 @@ var Settings = (function () {
     var n = window.Characters ? Characters.count() : 0;
     $("chars-status").textContent = n ? I18n.t("settings.charsCount", { n: n }) : I18n.t("settings.charsNone");
 
+    renderLayout();
+
     var sw = $("sound-switch");
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
+  }
+
+  // ---------- 版面：自动 / 横屏 / 竖屏 ----------
+  function renderLayout() {
+    var pref = Layout.pref();
+    document.querySelectorAll("#layout-btns [data-layout]").forEach(function (b) {
+      var on = b.dataset.layout === pref; b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    $("layout-status").textContent = I18n.t("layout.now", { mode: I18n.t("layout.mode." + Layout.mode()) });
   }
 
   // ---------- 动作 ----------
@@ -147,6 +158,11 @@ var Settings = (function () {
       renderStatus();
       Sound.play("add"); // 打开时给一点声音，让你知道它在
     });
+    $("layout-btns").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-layout]"); if (!b) return;
+      Layout.set(b.dataset.layout); renderLayout();
+    });
+    document.addEventListener("layout:change", renderLayout);
     $("export-backup").addEventListener("click", exportBackup);
     $("export-text").addEventListener("click", exportText);
     $("import-backup").addEventListener("click", chooseFile);

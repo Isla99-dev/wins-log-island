@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wins Log 小岛</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%23ffcf4a' stroke='%236e4029' stroke-width='.6' d='M3 0h1v2h1v1h2v1h-2v1h-1v2h-1v-2h-1v-1h-2v-1h2v-1h1z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/fonts.css">
@@ -24,8 +24,8 @@
   </div>
 
   <nav class="tabs" data-i18n-aria="tabs.aria">
-    <button class="tab is-active" data-view="island" type="button" data-i18n="tab.island">🏝 我的小岛</button>
-    <button class="tab" data-view="map" type="button" data-i18n="tab.map">🗺 世界地图</button>
+    <button class="tab is-active" data-view="island" type="button" data-i18n-aria="tab.island"><span class="tab-ico" aria-hidden="true">🏝</span><span class="tab-label" data-i18n="tab.island">我的小岛</span></button>
+    <button class="tab" data-view="map" type="button" data-i18n-aria="tab.map"><span class="tab-ico" aria-hidden="true">🗺</span><span class="tab-label" data-i18n="tab.map">世界地图</span></button>
     <button class="tab lang-toggle" id="lang-toggle" type="button" data-i18n-aria="lang.aria">
       <span data-lang="zh">中</span><span class="lang-sep">/</span><span data-lang="en">EN</span>
     </button>
@@ -51,6 +51,15 @@
 
   <!-- 右侧面板：任务 / 商店 / 本月 / 助手 -->
   <section class="panel i3-hud i3-panel" id="i3-panel" data-i18n-aria="i3.panelAria">
+    <!-- 竖屏版面里，这块面板是底部抽屉：收起时只露出这一行（js/sheet.js）；横屏和电脑上不显示 -->
+    <div class="i3-sheet-head" id="i3-sheet-head">
+      <button class="i3-handle" id="i3-handle" type="button" data-i18n-aria="sheet.handle"><i></i></button>
+      <div class="i3-peek" id="i3-peek">
+        <button class="i3-next" id="i3-next" type="button"><b data-i18n="sheet.next">下一件</b><span id="i3-next-text"></span></button>
+        <button class="i3-btn i3-peek-btn" id="i3-peek-mic" type="button" data-i18n-aria="sheet.mic">🎙</button>
+        <button class="i3-btn i3-peek-btn" id="i3-peek-more" type="button" data-i18n-aria="sheet.more">⋯</button>
+      </div>
+    </div>
     <div class="i3-tabs" role="tablist">
       <button class="i3-tab is-on" type="button" data-page="tasks" data-i18n="i3.tabTasks">任务</button>
       <button class="i3-tab" type="button" data-page="shop" data-i18n="i3.tabShop">商店</button>
@@ -204,6 +213,17 @@
 
     <div class="divider" aria-hidden="true"></div>
 
+    <h3 class="sub-title" data-i18n="layout.title">版面</h3>
+    <p class="settings-note" data-i18n="layout.hint"></p>
+    <div class="settings-actions" id="layout-btns" role="group" data-i18n-aria="layout.title">
+      <button class="i3-btn" type="button" data-layout="auto" data-i18n="layout.auto">自动</button>
+      <button class="i3-btn" type="button" data-layout="landscape" data-i18n="layout.landscape">横屏</button>
+      <button class="i3-btn" type="button" data-layout="portrait" data-i18n="layout.portrait">竖屏</button>
+    </div>
+    <p class="settings-status" id="layout-status"></p>
+
+    <div class="divider" aria-hidden="true"></div>
+
     <h3 class="sub-title" data-i18n="chibi.title">我的小人</h3>
     <p class="settings-note" data-i18n="chibi.hint"></p>
     <div class="settings-actions"><button class="pixel-btn pixel-btn--icon" id="chibi-open" type="button" data-i18n="chibi.open">👀 预览小人</button></div>
@@ -264,8 +284,10 @@
 <script src="lib/UnrealBloomPass.js"></script>
 <script src="js/models.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/layout.js"></script>
 <script src="js/characters.js"></script>
 <script src="js/history.js"></script>
+<script src="js/sheet.js"></script>
 <script src="js/chibi.js"></script>
 <script src="js/chibi-preview.js"></script>
 <script src="js/sound.js"></script>

@@ -53,6 +53,11 @@ Wins Log 小岛
 - 3D 用 three.js r128 的非 module 版本，放在 `lib/`（MIT，许可文件 `lib/LICENSE-three.txt`）。不要升级到只有 ES module 的新版本。
 - 3D 模型（Kenney CC0）以 base64 打包在 `js/models.js` 里（双击打开时浏览器不让读 .glb 文件），许可在 `models/LICENSE-kenney.txt`。要加新模型：重新生成 `js/models.js`，不要手改。
 - 小岛网址后面加 `#area=forest`、`#time=22` 可以直接看某个区域 / 时间，截图检查用。
+- **版面**（`js/layout.js`，在 `<body>` 上加 `layout-portrait` / `layout-landscape`，设置里可以自动 / 锁定横屏 / 锁定竖屏，偏好存在 `winslog-layout`）：
+  - 横屏和电脑：小岛全屏，任务、商店、本月、历史、助手在右边的侧边栏。
+  - 手机竖屏：小岛占满整个屏幕（不缩放），任务等收进底部抽屉（`js/sheet.js`），三档：收起（默认，一行约 60px：左边「下一件」小事、右边说话按钮和「更多」）、半开（半屏任务列表）、全开（顶到顶栏下）。可以上下拖（跟手，松手吸附到最近一档，动画 260ms，快甩按方向走一档），也可以点把手轮流切换。收起时点「下一件」会发出 `companion:start` 事件（陪伴模式第 2 期接上）。
+  - 手机浏览器没办法真正锁住屏幕方向，所以「锁定」固定的是版面。
+- 小岛网址后面加 `#sheet=peek|half|full` 可以直接看抽屉的某一档（竖屏版面）。
 - 小岛网址后面加 `#page=history`、`#page=month`、`#page=shop`、`#page=helper`、`#day=2026-11-26` 可以直接打开右边面板的某一页 / 某一天的历史；加 `#view=map`、`#modal=settings`、`#modal=printer` 可以直接看世界地图 / 设置 / 小票，截图检查用。
 - **Wins 永久保存**：按日期存在 `winslog-island-v1` 里，任何时候都不自动删除。导入备份前会自动把现在的整份另存到 `winslog-island-v1.before-import`；读不出来的旧数据会原样留在 `winslog-island-v1.unreadable-<时间>`，不会被新的空记录盖掉。「今日任务」「今天的 Wins」只显示当天，要看以前的去「历史」页（`js/history.js`，只读）。
 - AI 功能先用模拟回复占位，以后再接入真正的 AI 接口。
