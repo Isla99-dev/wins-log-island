@@ -107,7 +107,7 @@ var Sheet = (function () {
   function openHelper(listen) {
     document.dispatchEvent(new CustomEvent("island:page", { detail: { page: "helper" } }));
     go("half", true);
-    if (listen) setTimeout(function () { var m = $("chat-mic"); if (m) m.click(); }, 80); // 说话：点一下开始听，不支持语音的浏览器会自己提示
+    if (listen && window.Chat) Chat.listen(); // 说话：必须就在这次点按里同步开始听（iOS 上隔一会儿再 start() 会被拒绝）
   }
   function startNext() {
     var t = nextTask();

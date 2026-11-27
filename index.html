@@ -40,7 +40,7 @@
   <!-- 时间、金币 -->
   <div class="i3-hud i3-clock plank" id="i3-clock">
     <div class="i3-row"><span class="i3-now" id="i3-now">12:00</span><span id="i3-period"></span>
-      <button class="i3-btn i3-live is-on" id="i3-live" type="button" data-i18n="i3.live">实时</button></div>
+      <button class="i3-btn i3-timebtn" id="i3-timebtn" type="button" aria-haspopup="true" aria-expanded="false" data-i18n-aria="i3.timePick" data-i18n-title="i3.timePick"><span id="i3-timeico" aria-hidden="true">☀️</span></button></div>
     <input type="range" id="i3-time" min="0" max="1439" step="1" data-i18n-aria="i3.timeAria">
     <div class="i3-marks" id="i3-marks"></div>
     <div class="i3-purse">
@@ -114,6 +114,11 @@
         <button class="pixel-btn" type="submit" data-i18n="chat.send">发送</button>
       </form>
       <p class="soon" id="chat-hint" data-i18n="chat.hint"></p>
+      <div class="notice" id="chat-dictation" hidden>
+        <p data-i18n="mic.dictation"></p>
+        <div class="notice-actions"><button class="i3-btn" id="chat-dictation-retry" type="button" data-i18n="mic.dictationRetry">再试一次内置语音</button></div>
+      </div>
+      <pre class="voice-status" id="chat-voice" hidden></pre>
     </div>
   </section>
 
@@ -129,6 +134,9 @@
     <button class="i3-btn" id="i3-hide" type="button" data-i18n="i3.hideUi">只看小岛</button>
   </div>
   <button class="i3-btn i3-show" id="i3-show" type="button" data-i18n="i3.showUi">显示界面</button>
+
+  <!-- 时间选项（太阳 / 月亮按钮点开）：跟随现实时间、清晨、白天、黄昏、夜晚 -->
+  <div class="i3-timepop plank" id="i3-time-pop" role="group" data-i18n-aria="i3.timePick" hidden></div>
 
   <div class="i3-placing plank" id="i3-placing" hidden><span id="i3-ptext"></span>
     <button class="i3-btn" id="i3-pcancel" type="button" data-i18n="i3.cancel">取消</button></div>

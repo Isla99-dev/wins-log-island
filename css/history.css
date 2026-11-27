@@ -60,3 +60,8 @@
 .hist-monthrow span { font-size: 12px; color: var(--ink-soft); }
 .hist-monthrow:hover { color: var(--berry); }
 .hist-all { margin-top: 14px; }
+
+/* 语音输入：状态提示（给你在手机上看原因）和「改用输入法语音」时放大的输入框 */
+.voice-status { margin: 6px 0 0; padding: 5px 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; color: var(--ink-soft); background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); white-space: pre-wrap; word-break: break-all; }
+.voice-status[hidden] { display: none; }
+.chat-entry.is-dictation input { height: 64px; font-size: 18px; }

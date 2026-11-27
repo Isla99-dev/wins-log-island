@@ -1202,7 +1202,15 @@ var Island = (function () {
     }
 
     /* ================= 时间：傍晚到夜里最好看 ================= */
-    let live = true, hours = 12;
+    // 时间有五种选法（太阳 / 月亮按钮）：跟随现实时间、清晨、白天、黄昏、夜晚。选了就一直保持那个时间的光线和天色。
+    // 选择存在 localStorage 的 winslog-island3d-time（只是界面偏好，不在备份里）。拖时间条是临时看一眼（自定义），不保存。
+    const TKEY = "winslog-island3d-time";
+    const TIMES = { dawn: 6.5, day: 13, dusk: 17.6, night: 22 };
+    const TMODES = ["live", "dawn", "day", "dusk", "night"];
+    const TICON = { live: "🕒", dawn: "🌅", day: "☀️", dusk: "🌇", night: "🌙" };
+    let timeMode = "live", custom = false, hasSavedTime = false;
+    try { const v = localStorage.getItem(TKEY); if (TMODES.indexOf(v) >= 0) { timeMode = v; hasSavedTime = true; } } catch (e) {}
+    let live = timeMode === "live", hours = TIMES[timeMode] || 12;
     // [时刻, 天顶, 中间, 地平线]
     const KF = [
       [0, "#141d44", "#1d2a5c", "#2d3b6e"], [4.5, "#141d44", "#1d2a5c", "#2d3b6e"], [6, "#e9a487", "#c3a3b8", "#8fa8d6"],
@@ -1245,9 +1253,41 @@ var Island = (function () {
       if (bloom) bloom.strength = lampOn * .35;
       const hh = Math.floor(t), mm = Math.floor((t - hh) * 60);
       $("i3-now").textContent = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0"); $("i3-period").textContent = period(t);
+      const ico = (t >= 5.5 && t < 18.8) ? "☀️" : "🌙"; // 按钮上的图：白天是太阳，晚上是月亮
+      if (ico !== iconNow) { iconNow = ico; $("i3-timeico").textContent = ico; }
     }
-    $("i3-time").oninput = e => { live = false; $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); hours = +e.target.value / 60; };
-    $("i3-live").onclick = () => { live = true; $("i3-live").classList.add("is-on"); $("i3-live").textContent = T("i3.live"); };
+    let iconNow = "";
+    $("i3-time").oninput = e => { live = false; custom = true; hours = +e.target.value / 60; renderTimeUI(); };
+
+    // ---- 太阳 / 月亮按钮和选项 ----
+    const timeBtn = $("i3-timebtn"), timePop = $("i3-time-pop");
+    function setTimeMode(m) {
+      timeMode = m; custom = false; live = m === "live";
+      if (!live) { hours = TIMES[m]; $("i3-time").value = Math.round(hours * 60); }
+      try { localStorage.setItem(TKEY, m); } catch (e) {}
+      hasSavedTime = true; renderTimeUI();
+    }
+    function renderTimeUI() {
+      const label = T("i3.tmode." + (custom ? "custom" : timeMode));
+      timeBtn.title = T("i3.timePick") + "：" + label; timeBtn.setAttribute("aria-label", T("i3.timePick") + "：" + label);
+      timePop.querySelectorAll("[data-tm]").forEach(b => { const on = !custom && b.dataset.tm === timeMode; b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", on); });
+    }
+    timePop.innerHTML = TMODES.map(m => '<button type="button" class="i3-btn" data-tm="' + m + '"><span aria-hidden="true">' + TICON[m] + "</span> " + esc(T("i3.tmode." + m)) + "</button>").join("");
+    function placeTimePop() { // 贴着按钮的下面，右边对齐，不超出屏幕
+      const r = timeBtn.getBoundingClientRect(), w = timePop.offsetWidth || 190;
+      timePop.style.top = Math.round(r.bottom + 6) + "px"; timePop.style.left = Math.round(clamp(r.right - w, 6, innerWidth - w - 6)) + "px";
+    }
+    function openTimePop(open) {
+      timePop.hidden = !open; timeBtn.setAttribute("aria-expanded", open);
+      if (open) { placeTimePop(); const on = timePop.querySelector(".is-on") || timePop.querySelector("button"); if (on) on.focus(); }
+    }
+    timeBtn.addEventListener("click", () => openTimePop(timePop.hidden));
+    timePop.addEventListener("click", e => { const b = e.target.closest("[data-tm]"); if (!b) return; setTimeMode(b.dataset.tm); openTimePop(false); timeBtn.focus(); });
+    document.addEventListener("pointerdown", e => { if (!timePop.hidden && !timePop.contains(e.target) && !timeBtn.contains(e.target)) openTimePop(false); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !timePop.hidden) { openTimePop(false); timeBtn.focus(); } });
+    addEventListener("resize", () => { if (!timePop.hidden) placeTimePop(); });
+    document.addEventListener("layout:change", () => openTimePop(false));
+    renderTimeUI();
 
     let tipSeen = false; try { tipSeen = !!localStorage.getItem("winslog-island3d-tip"); } catch (e) {}
     $("i3-tip").hidden = tipSeen;
@@ -1361,9 +1401,11 @@ var Island = (function () {
     if (qa && qa[1] === "me") { tgt.set(me.x, .55, me.z); dist = 3.2; phi = .2; theta = 0; } // #area=me：拉近看小人（正面）
     const qth = /theta=(-?[\d.]+)/.exec(location.hash); if (qth) theta = +qth[1];
     if (/walk/.test(location.hash)) { me.path = [[-7, 3], [-6, 3], [-5, 3], [-4, 3], [-3, 3], [-3, 4], [-3, 5], [-3, 6], [-3, 7], [-3, 8]]; }
-    const freeze = h => { live = false; hours = clamp(h, 0, 23.99); $("i3-time").value = Math.round(hours * 60); $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); };
+    const freeze = h => { live = false; custom = true; hours = clamp(h, 0, 23.99); $("i3-time").value = Math.round(hours * 60); renderTimeUI(); };
     if (qt) freeze(+qt[1]);
-    else { const h = new Date().getHours(); if (h >= 21 || h < 5) freeze(18.5); } // 深夜打开时先显示傍晚 18:30，想看现在点「回到现在」
+    else if (!hasSavedTime && live) { const h = new Date().getHours(); if (h >= 21 || h < 5) freeze(18.5); } // 还没选过时间、又是深夜：先显示傍晚 18:30，想看现在就选「跟随现实时间」
+    else if (!live) $("i3-time").value = Math.round(hours * 60);
+    if (/timepop/.test(location.hash)) setTimeout(() => openTimePop(true), 600); // #timepop 直接打开时间选项（截图检查用）
     resize();
     new MutationObserver(() => { if (!view.hidden) resize(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     requestAnimationFrame(loop);

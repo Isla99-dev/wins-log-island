@@ -4,13 +4,17 @@
  * - 全部用浏览器自带的 Web Audio 现场合成，没有音频文件
  * - 音量很轻；可以在设置里关掉，会记住选择
  * - 用法：Sound.play("done")
+ * - 语音输入时要让出音频会话：Sound.hold() / Sound.release()。
+ *   iPhone 上（Chrome 也是 WebKit 内核），页面里只要有一个在用的 AudioContext，
+ *   下一次语音识别就可能启动失败。hold() 会把它关掉、之后不再发声；release() 之后第一次要发声时再重新创建。
+ *   以后加背景声（雨声、柴火、翻书、咖啡馆）也要接在这两个函数上：hold() 时停掉，release() 时恢复。
  */
 var Sound = (function () {
   var KEY = "winslog-sound";
   var on = true;
   try { on = localStorage.getItem(KEY) !== "off"; } catch (e) {}
 
-  var ctx = null, master = null;
+  var ctx = null, master = null, held = false;
   var VOLUME = 0.07;
 
   function audio() {
@@ -70,8 +74,16 @@ var Sound = (function () {
     }
   };
 
+  function hold() {
+    held = true;
+    if (!ctx) return;
+    var old = ctx; ctx = null; master = null;
+    try { var p = old.close(); if (p && p.catch) p.catch(function () { /* 关不掉也没关系 */ }); } catch (e) { /* 同上 */ }
+  }
+  function release() { held = false; } // 不用马上恢复：下一次 play() 会重新创建
+
   function play(name, arg) {
-    if (!on || !SOUNDS[name]) return;
+    if (!on || held || !SOUNDS[name]) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && name === "print") return;
     try {
       if (!audio()) return;
@@ -85,5 +97,5 @@ var Sound = (function () {
     try { localStorage.setItem(KEY, on ? "on" : "off"); } catch (e) {}
   }
 
-  return { play: play, set: set, isOn: function () { return on; } };
+  return { play: play, set: set, hold: hold, release: release, isHeld: function () { return held; }, isOn: function () { return on; } };
 })();

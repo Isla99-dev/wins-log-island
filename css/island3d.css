@@ -24,8 +24,10 @@ body.on-island .footnote { display: none; }
 .i3-row { display: flex; align-items: center; gap: 10px; }
 .i3-now { font-family: var(--font-pixel); font-size: 30px; line-height: 1.1; }
 #i3-period { font-family: var(--font-cute); flex: 1; }
-.i3-live { font-size: 12px; min-height: 26px; min-width: 0; padding: 0 8px; white-space: nowrap; }
-.i3-live.is-on { background: #dde7d1; color: var(--moss-dark); }
+.i3-timebtn { min-width: 36px; min-height: 30px; padding: 0 8px; font-size: 18px; line-height: 1; }
+.i3-timepop { position: fixed; z-index: 30; display: flex; flex-direction: column; gap: 6px; width: 190px; padding: 8px; }
+.i3-timepop[hidden] { display: none; }
+.i3-timepop .i3-btn { width: 100%; text-align: left; font-size: 15px; min-height: 36px; }
 #i3-time { width: 100%; accent-color: var(--berry); height: 24px; margin: 2px 0 0; }
 .i3-marks { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
 .i3-purse {
@@ -125,6 +127,9 @@ body.layout-portrait #island3d { height: 100%; }
 body.layout-portrait .i3-clock { top: calc(52px + env(safe-area-inset-top, 0px)); left: 8px; width: auto; padding: 3px 10px 5px; }
 body.layout-portrait .i3-clock #i3-time, body.layout-portrait .i3-clock .i3-marks { display: none; }
 body.layout-portrait .i3-now { font-size: 22px; }
+/* 竖屏：太阳 / 月亮按钮挪到小岛的右上角（顶栏下面），不挡着小岛 */
+body.layout-portrait .i3-timebtn { position: fixed; top: calc(52px + env(safe-area-inset-top, 0px)); right: 8px; z-index: 6; min-width: 42px; min-height: 42px; font-size: 22px; }
+body.layout-portrait .view-island.is-bare .i3-timebtn { opacity: 0; pointer-events: none; }
 body.layout-portrait .i3-clock .i3-purse { margin-top: 2px; padding-top: 2px; border-top: 0; gap: 12px; }
 /* 控制条：贴在抽屉的上沿，抽屉怎么动它怎么跟；抽屉展开后让开 */
 body.layout-portrait .i3-ctrl {
