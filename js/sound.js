@@ -8,16 +8,23 @@
  *   iPhone 上（Chrome 也是 WebKit 内核），页面里只要有一个在用的 AudioContext，
  *   下一次语音识别就可能启动失败。hold() 会把它关掉、之后不再发声；release() 之后第一次要发声时再重新创建。
  *   以后加背景声（雨声、柴火、翻书、咖啡馆）也要接在这两个函数上：hold() 时停掉，release() 时恢复。
+ * - 三种做法（语音实验用，Sound.setMode）：
+ *     normal  现状：用到就创建 AudioContext，一直开着
+ *     soft    每个音效放完就 suspend()，不占着音频会话；release(1000) 让识别结束后 1 秒内也不发声
+ *     silent  完全不发声、不创建任何 AudioContext（排查音频冲突用）
+ * - 页面里只有这个文件会发声：没有 <audio>、没有背景音、没有 speechSynthesis 朗读。
  */
 var Sound = (function () {
   var KEY = "winslog-sound";
   var on = true;
   try { on = localStorage.getItem(KEY) !== "off"; } catch (e) {}
 
-  var ctx = null, master = null, held = false;
+  var ctx = null, master = null, held = false, mode = "normal", susTimer = 0, relTimer = 0;
+  var DUR = { add: 0.25, done: 0.45, grow: 0.9, undo: 0.25, pop: 0.2, save: 0.35 }; // 各个音效大概放多久（秒），soft 模式放完就 suspend()
   var VOLUME = 0.07;
 
   function audio() {
+    if (mode === "silent") return null;
     if (ctx) return ctx;
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -75,20 +82,29 @@ var Sound = (function () {
   };
 
   function hold() {
-    held = true;
+    held = true; clearTimeout(relTimer); clearTimeout(susTimer);
     if (!ctx) return;
     var old = ctx; ctx = null; master = null;
     try { var p = old.close(); if (p && p.catch) p.catch(function () { /* 关不掉也没关系 */ }); } catch (e) { /* 同上 */ }
   }
-  function release() { held = false; } // 不用马上恢复：下一次 play() 会重新创建
+  function release(delayMs) { // 不用马上恢复：下一次 play() 会重新创建。delayMs：识别结束后再安静一会儿
+    clearTimeout(relTimer);
+    if (delayMs > 0) relTimer = setTimeout(function () { held = false; }, delayMs); else held = false;
+  }
+  function setMode(m) { mode = m === "soft" || m === "silent" ? m : "normal"; if (mode === "silent") hold(); }
 
   function play(name, arg) {
-    if (!on || held || !SOUNDS[name]) return;
+    if (!on || held || mode === "silent" || !SOUNDS[name]) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && name === "print") return;
     try {
       if (!audio()) return;
       if (ctx.state === "suspended") ctx.resume();
       SOUNDS[name](arg);
+      if (mode === "soft") { // 放完就 suspend()，不一直占着音频会话
+        clearTimeout(susTimer);
+        var secs = name === "print" ? (arg || 2) + 0.4 : (DUR[name] || 0.5);
+        susTimer = setTimeout(function () { try { if (ctx && ctx.state === "running") ctx.suspend(); } catch (e) { /* 同上 */ } }, (secs + 0.15) * 1000);
+      }
     } catch (e) { /* 没有声音也不影响使用 */ }
   }
 
@@ -97,5 +113,5 @@ var Sound = (function () {
     try { localStorage.setItem(KEY, on ? "on" : "off"); } catch (e) {}
   }
 
-  return { play: play, set: set, hold: hold, release: release, isHeld: function () { return held; }, isOn: function () { return on; } };
+  return { play: play, set: set, setMode: setMode, mode: function () { return mode; }, hold: hold, release: release, isHeld: function () { return held; }, isOn: function () { return on; } };
 })();

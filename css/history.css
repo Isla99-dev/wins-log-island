@@ -65,3 +65,9 @@
 .voice-status { margin: 6px 0 0; padding: 5px 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; color: var(--ink-soft); background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); white-space: pre-wrap; word-break: break-all; }
 .voice-status[hidden] { display: none; }
 .chat-entry.is-dictation input { height: 64px; font-size: 18px; }
+
+/* 设置里的「语音实验」 */
+.voice-exp { margin-top: 10px; padding: 8px 10px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); }
+.voice-exp[hidden] { display: none; }
+.voice-exp-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.voice-exp-list .i3-btn { width: 100%; text-align: left; font-size: 13px; line-height: 1.35; padding: 6px 10px; min-height: 34px; white-space: normal; }

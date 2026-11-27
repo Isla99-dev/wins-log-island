@@ -53,9 +53,21 @@ var Settings = (function () {
     var sw = $("sound-switch");
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
+    renderVoiceExp();
     var dw = $("debug-switch");
     dw.setAttribute("aria-checked", debugOn ? "true" : "false");
     dw.querySelector(".switch-label").textContent = I18n.t(debugOn ? "settings.on" : "settings.off");
+  }
+
+  // ---------- 语音实验（调试模式里才显示）：一个一个在手机上试，找到有效的就停 ----------
+  function renderVoiceExp() {
+    var box = $("voice-exp"); if (!box) return;
+    box.hidden = !debugOn;
+    if (!debugOn) return;
+    var cur = Chat.expId();
+    $("voice-exp-list").innerHTML = Chat.EXPERIMENTS.map(function (x) {
+      return '<button type="button" class="i3-btn' + (x.id === cur ? " is-on" : "") + '" data-exp="' + x.id + '" aria-pressed="' + (x.id === cur) + '">' + I18n.t("settings.exp." + x.id) + "</button>";
+    }).join("");
   }
 
   // ---------- 版面：自动 / 横屏 / 竖屏 ----------
@@ -163,6 +175,11 @@ var Settings = (function () {
       Sound.set(!Sound.isOn());
       renderStatus();
       Sound.play("add"); // 打开时给一点声音，让你知道它在
+    });
+    $("voice-exp-list").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-exp]"); if (!b) return;
+      Chat.setExp(+b.dataset.exp);
+      location.reload(); // 换实验后刷新页面：每个实验都要从干净的页面开始（尤其是音频会话）
     });
     $("debug-switch").addEventListener("click", function () {
       debugOn = !debugOn;

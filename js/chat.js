@@ -205,31 +205,45 @@ var Chat = (function () {
       });
   }
 
-  function hint(text) {
+  function hint(text, ms) {
     var el = $("chat-hint");
     el.textContent = text;
     clearTimeout(hint.timer);
-    hint.timer = setTimeout(function () { el.textContent = I18n.t("chat.hint"); }, 4000);
+    hint.timer = setTimeout(function () { el.textContent = I18n.t("chat.hint"); }, ms || 4000);
   }
 
   // ---------- 语音输入 ----------
-  // iPhone 上的 Chrome 用的是 WebKit 内核，语音识别很娇气。这里的做法：
-  //  1. 每次点按都新建一个 SpeechRecognition，结束就丢掉（onend 里清理），不复用旧的
-  //  2. start() 在点按的事件里同步调用，前面没有 await / setTimeout
-  //  3. 正在启动 / 识别 / 收尾时不会再 start()；start() 抛 InvalidStateError 也接住
-  //  4. 开始前先把页面的音效关掉（Sound.hold），结束后放开（Sound.release）
-  //  5. 每一次 start / onstart / onresult / onerror / onend 都写在页面的小提示里，方便在手机上看原因
-  //  6. 连续失败 2 次，自动换成「用输入法的语音」的提示
-  // 现在是「点一下开始，再点一下结束」；停下说话它也会自己结束。
-  var voice = { rec: null, phase: "idle", n: 0, fails: 0, started: false, failed: false, dictation: false, watch: 0, stopWatch: 0, lines: [], startedAt: 0, lastTap: 0, cooldownUntil: 0 };
-  var DEBOUNCE = 500;   // 点按防抖：500ms 内的重复点按忽略
-  var STOP_GUARD = 1000; // start() 之后 1 秒内忽略任何「停止」请求
+  // iPhone 上的 Chrome 用的是 WebKit 内核，语音识别很娇气。最新日志：从第 2 次起 onstart 正常、说话 5～7 秒，
+  // 但一次 onresult 都没有——识别启动了，麦克风却没收到声音。原因还没确定，所以做了几个「语音实验」（设置里打开
+  // 「调试模式」才看得到，一个一个在手机上试），日志里会写清楚当前是哪个实验：
+  //   0 基准：每次点按新建一个 SpeechRecognition（之前的做法）
+  //   1 A0：页面完全不发声（Sound 不创建任何 AudioContext）——排查音频冲突用
+  //   2 A ：识别期间和结束后 1 秒不发声，音效用完 suspend()，不占着音频会话（默认）
+  // 所有实验共用：每个 start / stop / abort 写来源；500ms 点按防抖；start() 后 1 秒内忽略停止；
+  //   onstart 后 4 秒没有任何 onresult 就自动停止、提示「语音没听到……」、把焦点放进输入框（兜底）。
+  // 页面上的两个 🎙（聊天面板、抽屉）都走 micTap()，共用同一份状态和同一套识别逻辑，没有各自创建实例。
+  var EXP_KEY = "winslog-voice-exp";
+  var EXPERIMENTS = [
+    { id: 0, tag: "0 基准",        sound: "normal", reuse: false, warm: false },
+    { id: 1, tag: "1 A0 完全不发声", sound: "silent", reuse: false, warm: false },
+    { id: 2, tag: "2 A 前后不发声",  sound: "soft",   reuse: false, warm: false }
+  ];
+  var DEFAULT_EXP = 2;
+  function expId() { var v = NaN; try { v = parseInt(localStorage.getItem(EXP_KEY), 10); } catch (e) { /* 读不到就用默认 */ } return v >= 0 && v < EXPERIMENTS.length ? v : DEFAULT_EXP; }
+  function exp() { return EXPERIMENTS[expId()]; }
+  function setExp(id) { try { localStorage.setItem(EXP_KEY, String(id)); } catch (e) {} }
+
+  var voice = { rec: null, sid: 0, phase: "idle", n: 0, fails: 0, started: false, failed: false, gotResult: false, dictation: false,
+                watch: 0, stopWatch: 0, resultWatch: 0, lines: [], startedAt: 0, lastTap: 0, cooldownUntil: 0 };
+  var DEBOUNCE = 500;     // 点按防抖：500ms 内的重复点按忽略
+  var STOP_GUARD = 1000;  // start() 之后 1 秒内忽略任何「停止」请求
+  var NO_RESULT_MS = 4000; // onstart 之后这么久还没有任何 onresult：当作麦克风没收到声音
   var HARD_ERRORS = { "not-allowed": 1, "service-not-allowed": 1, "audio-capture": 1, "network": 1, "language-not-supported": 1, "bad-grammar": 1 }; // 这些算失败；no-speech、aborted 不算
 
   function getRecognition() { return window.SpeechRecognition || window.webkitSpeechRecognition; } // 点的时候再取，不在加载时取
 
   function vlog(ev, newAttempt) { // 小提示：最近 3 次的经过，一次一行
-    if (newAttempt || !voice.lines.length) voice.lines.push("#" + voice.n + " ");
+    if (newAttempt || !voice.lines.length) voice.lines.push("#" + voice.n + " [" + exp().tag + "] ");
     voice.lines[voice.lines.length - 1] += (/ $/.test(voice.lines[voice.lines.length - 1]) ? "" : " → ") + ev;
     if (voice.lines.length > 3) voice.lines.shift();
     renderVoiceLog();
@@ -266,14 +280,14 @@ var Chat = (function () {
     if (voice.fails >= 2 && !voice.dictation) showDictation(true);
   }
 
-  // 一次识别彻底结束：丢掉这个实例，放开音效，判断算成功还是失败
+  // 一次识别彻底结束：重置状态、实例设为 null，放开音效，判断算成功还是失败
   function finish(rec, finalText, noCount) {
     if (voice.rec !== rec) return; // 已经收拾过了
-    clearTimeout(voice.watch); clearTimeout(voice.stopWatch);
-    voice.rec = null; voice.phase = "idle"; voice.startedAt = 0; // 实例设为 null，不再「正在听」
-    voice.cooldownUntil = performance.now() + 400;                // 刚结束的一小会儿不接新的 start()，别和还没收尾的旧实例叠在一起
+    clearTimeout(voice.watch); clearTimeout(voice.stopWatch); clearTimeout(voice.resultWatch);
+    voice.rec = null; voice.phase = "idle"; voice.startedAt = 0;
+    voice.cooldownUntil = performance.now() + 400; // 刚结束的一小会儿不接新的 start()，别和还没收尾的旧实例叠在一起
     setMicUI("idle");
-    Sound.release();
+    Sound.release(exp().sound === "soft" ? 1000 : 0); // 实验 A：结束后 1 秒内也不发声
     var text = (finalText || "").trim();
     if (text) {
       voice.fails = 0;
@@ -303,59 +317,80 @@ var Chat = (function () {
   }
 
   function startListening(source) {
-    var Recognition = getRecognition();
-    if (!Recognition) { hint(I18n.t("mic.unsupported")); showDictation(true); return; }
-    voice.n++; voice.started = false; voice.failed = false;
-    var finalText = "", rec;
-    try { rec = new Recognition(); } catch (err) { vlog("new " + err.name, true); countFail(); hint(I18n.t("mic.startFailed")); return; }
-    voice.rec = rec; voice.phase = "starting";
-    rec.lang = I18n.t("mic.lang"); rec.interimResults = true; rec.continuous = false;
-
-    rec.onstart = function () {
-      if (voice.rec !== rec) { vlog("旧实例的 onstart（已忽略）"); return; }
-      clearTimeout(voice.watch);
-      voice.phase = "listening"; voice.started = true; vlog("onstart (start() 后 " + Math.round(performance.now() - voice.startedAt) + "ms)");
-      setMicUI("listening"); hint(I18n.t("mic.listening"));
-    };
-    rec.onresult = function (e) {
-      if (voice.rec !== rec) return;
-      var interim = "";
-      for (var i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript; else interim += e.results[i][0].transcript;
-      }
-      rec.__text = finalText; input.value = finalText + interim; vlog("onresult");
-    };
-    rec.onerror = function (e) {
-      if (voice.rec !== rec) { vlog("旧实例的 onerror: " + e.error + "（已忽略）"); return; }
-      vlog("onerror: " + e.error);
-      if (HARD_ERRORS[e.error] || (e.error !== "no-speech" && e.error !== "aborted")) voice.failed = true;
-      var key = { "not-allowed": "mic.notAllowed", "service-not-allowed": "mic.serviceNotAllowed", "no-speech": "mic.noSpeech", "network": "mic.network", "audio-capture": "mic.audioCapture" }[e.error];
-      if (e.error !== "aborted") hint(I18n.t(key || "mic.other"));
-      abortRec(rec, "onerror"); // 出错就 abort()，同时马上把状态重置、实例设为 null（后面迟到的 onend 会被当成旧实例忽略）
-      finish(rec, finalText);
-    };
-    rec.onend = function () { if (voice.rec !== rec) { vlog("旧实例的 onend（已忽略）"); return; } vlog("onend"); finish(rec, finalText); };
-
-    Sound.hold(); // 先关掉页面里的音效，让出音频会话
+    var Recognition = getRecognition(), cfg = exp();
+    if (!Recognition) { hint(I18n.t("mic.unsupported")); showDictation(true); finishNoRec(); return; }
+    voice.started = false; voice.failed = false; voice.gotResult = false;
+    var sid = ++voice.sid, finalText = "", rec;
     try {
-      rec.start(); // 就在点按的事件里同步调用
-      voice.startedAt = performance.now();
-      vlog("start() ← " + source, true);
-      setMicUI("starting"); // 马上给反馈：准备中…
-    } catch (err) {
-      vlog("start() 抛出 " + err.name, true);
-      voice.failed = err.name !== "InvalidStateError"; // 正在识别时重复 start 不算失败
-      hint(I18n.t("mic.startFailed"));
-      if (err.name === "InvalidStateError") abortRec(rec, "start() 抛出 InvalidStateError");
-      finish(rec, "", err.name === "InvalidStateError");
-      return;
-    }
-    voice.watch = setTimeout(function () { // 5 秒还没 onstart：放弃这次
-      if (voice.rec === rec && voice.phase === "starting") { vlog("5 秒没有 onstart"); hint(I18n.t("mic.noStart")); abortRec(rec, "onstart 看门狗"); finish(rec, ""); }
-    }, 5000);
-  }
+      rec = new Recognition(); // 每次新建
+    } catch (err) { vlog("new " + err.name); voice.phase = "idle"; setMicUI("idle"); countFail(); hint(I18n.t("mic.startFailed")); return; }
+    voice.rec = rec; voice.phase = "starting";
+    var cur = function () { return voice.sid === sid && voice.rec === rec; }; // 还是「这一次」吗（共用实例时旧事件会撞进来）
 
-  // 麦克风按钮的唯一入口（聊天面板里的 🎙 和抽屉里的 🎙 都走这里）。只认 click，不碰 touchstart / mousedown。
+    function go() { // 真正 start()：就在点按的事件里同步调用（实验 B 在等旧的 onend 时，是在 onend 里调用）
+      rec.lang = I18n.t("mic.lang"); rec.interimResults = true; rec.continuous = false;
+      rec.onstart = function () {
+        if (!cur()) { vlog("旧实例的 onstart（已忽略）"); return; }
+        clearTimeout(voice.watch);
+        voice.phase = "listening"; voice.started = true; vlog("onstart (start() 后 " + Math.round(performance.now() - voice.startedAt) + "ms)");
+        setMicUI("listening"); hint(I18n.t("mic.listening"));
+        // 兜底：onstart 后 4 秒内没有任何 onresult，说明麦克风没收到声音（iPhone 上第 2 次起会这样）
+        voice.resultWatch = setTimeout(function () {
+          if (!cur() || voice.gotResult || voice.phase !== "listening") return;
+          vlog(Math.round(NO_RESULT_MS / 1000) + " 秒没有 onresult（麦克风没收到声音）");
+          voice.failed = true;
+          hint(I18n.t("mic.noAudio"), 8000);
+          stopListening("4 秒没有 onresult 看门狗"); // 自动停止
+          try { input.focus(); } catch (e) { /* 弹不出键盘也没关系 */ } // 焦点放进输入框，点键盘上的麦克风就能说
+        }, NO_RESULT_MS);
+      };
+      rec.onresult = function (e) {
+        if (!cur()) { vlog("旧实例的 onresult（已忽略）"); return; }
+        voice.gotResult = true; clearTimeout(voice.resultWatch);
+        var interim = "";
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) finalText += e.results[i][0].transcript; else interim += e.results[i][0].transcript;
+        }
+        rec.__text = finalText; input.value = finalText + interim; vlog("onresult");
+      };
+      rec.onerror = function (e) {
+        if (!cur()) { vlog("旧实例的 onerror: " + e.error + "（已忽略）"); return; }
+        vlog("onerror: " + e.error);
+        if (HARD_ERRORS[e.error] || (e.error !== "no-speech" && e.error !== "aborted")) voice.failed = true;
+        var key = { "not-allowed": "mic.notAllowed", "service-not-allowed": "mic.serviceNotAllowed", "no-speech": "mic.noSpeech", "network": "mic.network", "audio-capture": "mic.audioCapture" }[e.error];
+        if (e.error !== "aborted") hint(I18n.t(key || "mic.other"));
+        abortRec(rec, "onerror"); // 出错就 abort()，同时马上把状态重置、实例设为 null（后面迟到的 onend 会被当成旧实例忽略）
+        finish(rec, finalText);
+      };
+      rec.onend = function () {
+        if (!cur()) { vlog("旧实例的 onend（已忽略）"); return; }
+        vlog("onend"); finish(rec, finalText);
+      };
+
+      Sound.hold(); // 先让出音频会话（实验 A）
+      try {
+        rec.start();
+        voice.startedAt = performance.now();
+        vlog("start() ← " + source);
+        setMicUI("starting"); // 马上给反馈：准备中…
+      } catch (err) {
+        vlog("start() 抛出 " + err.name);
+        voice.failed = err.name !== "InvalidStateError"; // 正在识别时重复 start 不算失败
+        hint(I18n.t("mic.startFailed"));
+        if (err.name === "InvalidStateError") abortRec(rec, "start() 抛出 InvalidStateError");
+        finish(rec, "", err.name === "InvalidStateError");
+        return;
+      }
+      voice.watch = setTimeout(function () { // 5 秒还没 onstart：放弃这次
+        if (cur() && voice.phase === "starting") { vlog("5 秒没有 onstart"); hint(I18n.t("mic.noStart")); abortRec(rec, "onstart 看门狗"); finish(rec, ""); }
+      }, 5000);
+    }
+
+    go();
+  }
+  function finishNoRec() { voice.phase = "idle"; setMicUI("idle"); }
+
+  // 麦克风按钮的唯一入口（聊天面板里的 🎙 和抽屉里的 🎙 都走这里，共用同一份状态）。只认 click，不碰 touchstart / mousedown。
   // 带来源标签：谁点的、是不是真的点击、click 的 detail（连点第几下）、距离 start() 多少毫秒——日志里能直接看出 stop() 是谁叫的。
   function micTap(source, ev) {
     var now = performance.now();
@@ -369,6 +404,7 @@ var Chat = (function () {
     }
     if (voice.phase !== "idle") { vlog("忽略点按：" + voice.phase + (since !== null ? "，start() 后 " + since + "ms" : "") + " [" + tag + "]"); hint(I18n.t("mic.wait")); return; } // 防止重复启动
     if (now < voice.cooldownUntil) { vlog("忽略点按：上一次刚结束 [" + tag + "]"); return; }
+    voice.n++; voice.lines.push("#" + voice.n + " [" + exp().tag + "] "); if (voice.lines.length > 3) voice.lines.shift();
     startListening(tag);
   }
 
@@ -394,6 +430,7 @@ var Chat = (function () {
       send(text);
     });
 
+    Sound.setMode(exp().sound); // 语音实验：音效的三种做法（normal / soft / silent）
     var mic = $("chat-mic");
     mic.innerHTML = '<span aria-hidden="true">🎙</span><span class="mic-label" id="chat-mic-label"></span>';
     mic.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); micTap("click:chat-mic", e); }); // 只绑 click 这一种
@@ -422,5 +459,5 @@ var Chat = (function () {
     });
   }
 
-  return { init: init, listen: micTap, voiceState: function () { return { phase: voice.phase, fails: voice.fails, dictation: voice.dictation, n: voice.n, lines: voice.lines.slice() }; } };
+  return { init: init, listen: micTap, EXPERIMENTS: EXPERIMENTS, expId: expId, setExp: setExp, voiceState: function () { return { phase: voice.phase, fails: voice.fails, dictation: voice.dictation, n: voice.n, lines: voice.lines.slice() }; } };
 })();
