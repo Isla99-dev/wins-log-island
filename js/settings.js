@@ -8,6 +8,9 @@
 var Settings = (function () {
   var $ = function (id) { return document.getElementById(id); };
   var pending = null, lastFocus = null;
+  var DEBUG_KEY = "winslog-debug";
+  var debugOn = false;
+  try { debugOn = localStorage.getItem(DEBUG_KEY) === "on"; } catch (e) { /* 读不到就当关着 */ }
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function today() { return Store.dayKey(); }
@@ -50,6 +53,9 @@ var Settings = (function () {
     var sw = $("sound-switch");
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
+    var dw = $("debug-switch");
+    dw.setAttribute("aria-checked", debugOn ? "true" : "false");
+    dw.querySelector(".switch-label").textContent = I18n.t(debugOn ? "settings.on" : "settings.off");
   }
 
   // ---------- 版面：自动 / 横屏 / 竖屏 ----------
@@ -158,6 +164,12 @@ var Settings = (function () {
       renderStatus();
       Sound.play("add"); // 打开时给一点声音，让你知道它在
     });
+    $("debug-switch").addEventListener("click", function () {
+      debugOn = !debugOn;
+      try { localStorage.setItem(DEBUG_KEY, debugOn ? "on" : "off"); } catch (e) {}
+      renderStatus();
+      document.dispatchEvent(new CustomEvent("debug:change", { detail: { on: debugOn } })); // 语音状态日志跟着显示 / 隐藏
+    });
     $("layout-btns").addEventListener("click", function (e) {
       var b = e.target.closest("[data-layout]"); if (!b) return;
       Layout.set(b.dataset.layout); renderLayout();
@@ -194,5 +206,5 @@ var Settings = (function () {
   // 从别处（比如「没有记录」的提示）直接打开设置并选备份文件
   function importPrompt() { open(); chooseFile(); }
 
-  return { init: init, open: open, importPrompt: importPrompt };
+  return { init: init, open: open, importPrompt: importPrompt, isDebug: function () { return debugOn; } };
 })();

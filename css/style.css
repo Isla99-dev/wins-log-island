@@ -557,10 +557,10 @@ li:hover .mini-btn, .mini-btn:focus-visible { opacity: .75; }
 
 .todo li.is-done .split { visibility: hidden; }
 .mini-btn.split { font-size: 15px; }
-.pixel-btn.is-listening {
-  background: var(--berry);
-  animation: listening 1s steps(2) infinite;
-}
+.pixel-btn.is-listening { --frame: #8e3a33; background: #c4574d; animation: listening 1s steps(2) infinite; }  /* 正在听：红色 */
+.pixel-btn.is-starting { --frame: var(--butter-dark); background: var(--butter); color: var(--ink); text-shadow: none; }     /* 准备中：奶油黄 */
+.mic-label { margin-left: 6px; font-size: 14px; white-space: nowrap; }
+.mic-label:empty { display: none; }
 @keyframes listening { 50% { transform: translateY(-2px); } }
 
 /* ---------- 世界地图 ---------- */

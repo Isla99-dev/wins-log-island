@@ -104,10 +104,10 @@ var Sheet = (function () {
     if (t) { label.hidden = false; el.textContent = t.text; }
     else { label.hidden = true; el.textContent = T(Store.winsOf().length ? "sheet.allDone" : "sheet.none"); }
   }
-  function openHelper(listen) {
+  function openHelper(listen, ev) {
     document.dispatchEvent(new CustomEvent("island:page", { detail: { page: "helper" } }));
     go("half", true);
-    if (listen && window.Chat) Chat.listen(); // 说话：必须就在这次点按里同步开始听（iOS 上隔一会儿再 start() 会被拒绝）
+    if (listen && window.Chat) Chat.listen("click:peek-mic", ev); // 说话：必须就在这次点按里同步开始听（iOS 上隔一会儿再 start() 会被拒绝）
   }
   function startNext() {
     var t = nextTask();
@@ -131,7 +131,11 @@ var Sheet = (function () {
     });
     $("i3-handle").addEventListener("click", function () { go(state === "peek" ? "half" : state === "half" ? "full" : "peek", true); });
     $("i3-next").addEventListener("click", startNext);
-    $("i3-peek-mic").addEventListener("click", function () { openHelper(true); });
+    $("i3-peek-mic").addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); openHelper(true, e); });
+    document.addEventListener("voice:state", function (e) { // 说话按钮跟着变：准备中 / 正在听（红色）
+      var b = $("i3-peek-mic"), st = e.detail && e.detail.state;
+      b.classList.toggle("is-listening", st === "listening"); b.classList.toggle("is-starting", st === "starting");
+    });
     $("i3-peek-more").addEventListener("click", function () { go("half", true); });
     document.addEventListener("sheet:collapse", function () { if (portrait()) go("peek", true); });
     document.addEventListener("island:page", function () { ensure("half"); });   // 从别处跳到某一页（比如历史）：抽屉要打开
