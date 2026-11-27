@@ -42,6 +42,9 @@ var Settings = (function () {
     var wins = Store.allWins().length, dayCount = Store.allDays().filter(function (d) { return d.tasks.length; }).length;
     $("backup-status").textContent = I18n.t("settings.stats", { days: dayCount, wins: wins }) + " " + text;
 
+    var n = window.Characters ? Characters.count() : 0;
+    $("chars-status").textContent = n ? I18n.t("settings.charsCount", { n: n }) : I18n.t("settings.charsNone");
+
     var sw = $("sound-switch");
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
@@ -149,6 +152,22 @@ var Settings = (function () {
     $("import-backup").addEventListener("click", chooseFile);
     $("import-file").addEventListener("change", function () { readFile(this.files && this.files[0]); });
     $("import-yes").addEventListener("click", confirmImport);
+    // 角色图片：导入自己画的 PNG（me_stand.png、cat_sit.png……），存在这个浏览器里
+    $("chars-import").addEventListener("click", function () { $("chars-file").value = ""; $("chars-file").click(); });
+    $("chars-file").addEventListener("change", function () {
+      if (!this.files || !this.files.length) return;
+      Characters.importFiles(this.files, function (r) {
+        if (r.full) { say(I18n.t("settings.charsFull"), true); return; }
+        var text = I18n.t("settings.charsDone", { n: r.ok });
+        if (r.skipped.length) text += " " + I18n.t("settings.charsSkipped", { list: r.skipped.join("、") });
+        say(text, !r.ok);
+        if (r.ok) setTimeout(function () { location.reload(); }, 1400);
+      });
+    });
+    $("chars-reset").addEventListener("click", function () {
+      Characters.reset(); say(I18n.t("settings.charsResetDone"));
+      setTimeout(function () { location.reload(); }, 900);
+    });
     $("import-no").addEventListener("click", function () {
       pending = null;
       $("import-confirm").hidden = true;

@@ -35,6 +35,7 @@
 
   // ---- 设置：音效、备份 ----
   Settings.init();
+  if (window.ChibiPreview) ChibiPreview.init();
 
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab[data-view]");

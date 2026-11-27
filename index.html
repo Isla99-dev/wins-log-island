@@ -160,6 +160,20 @@
 </div>
 
 <!-- ============ 设置 ============ -->
+<div class="modal" id="chibi-modal" role="dialog" aria-modal="true" aria-labelledby="chibi-title" hidden>
+  <section class="panel chibi-panel">
+    <div class="helper-head settings-head">
+      <h2 id="chibi-title" class="panel-title" data-i18n="chibi.title">我的小人</h2>
+      <button class="mini-btn settings-close" id="chibi-close" type="button" data-i18n-aria="settings.close">×</button>
+    </div>
+    <canvas id="chibi-canvas"></canvas>
+    <div class="chibi-views" id="chibi-views"></div>
+    <div class="chibi-row"><b data-i18n="chibi.poses">动作</b><div class="chibi-btns" id="chibi-poses"></div></div>
+    <div class="chibi-row"><b data-i18n="chibi.exprs">表情</b><div class="chibi-btns" id="chibi-exprs"></div>
+      <button class="i3-btn" id="chibi-rain" type="button" data-i18n="chibi.rain">下雨撑伞</button></div>
+  </section>
+</div>
+
 <div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
   <section class="panel settings-panel">
     <div class="helper-head settings-head">
@@ -176,6 +190,23 @@
         <span class="switch-knob" aria-hidden="true"></span>
         <span class="switch-label" id="settings-sound-label"></span>
       </button>
+    </div>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <h3 class="sub-title" data-i18n="chibi.title">我的小人</h3>
+    <p class="settings-note" data-i18n="chibi.hint"></p>
+    <div class="settings-actions"><button class="pixel-btn pixel-btn--icon" id="chibi-open" type="button" data-i18n="chibi.open">👀 预览小人</button></div>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <h3 class="sub-title" data-i18n="settings.chars">角色图片</h3>
+    <p class="settings-note" data-i18n="settings.charsHint"></p>
+    <p class="settings-status" id="chars-status"></p>
+    <div class="settings-actions">
+      <button class="pixel-btn pixel-btn--icon" id="chars-import" type="button" data-i18n="settings.charsImport">📂 导入角色图片</button>
+      <button class="pixel-btn pixel-btn--icon" id="chars-reset" type="button" data-i18n="settings.charsReset">恢复自带的角色</button>
+      <input type="file" id="chars-file" accept=".png,image/png" multiple hidden>
     </div>
 
     <div class="divider" aria-hidden="true"></div>
@@ -223,6 +254,9 @@
 <script src="lib/UnrealBloomPass.js"></script>
 <script src="js/models.js"></script>
 <script src="js/i18n.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/chibi.js"></script>
+<script src="js/chibi-preview.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/store.js"></script>
 <script src="js/tasks.js"></script>

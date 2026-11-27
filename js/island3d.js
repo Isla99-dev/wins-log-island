@@ -49,7 +49,7 @@ var Island = (function () {
     if (started || !window.THREE) return;
     started = true;
     Store.importIsland3d(PRICE);
-    loadModels(build);
+    loadModels(() => (window.Characters ? Characters.load(build) : build(null)));
   }
 
   /* ================= Kenney 模型：从 base64 读出来 ================= */
@@ -82,7 +82,7 @@ var Island = (function () {
   };
   const SEASON = SEASONS.toon;
 
-  function build() {
+  function build(ART) {
     const view = $("view-island");
     const cv = $("island3d");
     const isl = Store.island();
@@ -811,64 +811,48 @@ var Island = (function () {
     Store.allWins().forEach(t => plantTree(t, false));
     Store.save();
 
-    /* ================= 圆滚滚的小人 ================= */
-    // 脸画在头的贴图上（球面贴图，正前方在 u = 0.25）
-    function faceTex(blink) {
-      const c = document.createElement("canvas"); c.width = 512; c.height = 256; const g = c.getContext("2d");
-      g.fillStyle = "#ffe0c8"; g.fillRect(0, 0, 512, 256);
-      const cx = 128, ey = 134;
-      for (const dx of [-24, 24]) {
-        g.fillStyle = "#2b1d18"; g.strokeStyle = "#2b1d18";
-        if (blink) { g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.arc(cx + dx, ey - 2, 9, .2, Math.PI - .2); g.stroke(); continue; }
-        g.beginPath(); g.ellipse(cx + dx, ey, 8.5, 11.5, 0, 0, 7); g.fill();
-        g.fillStyle = "#ffffff"; g.beginPath(); g.arc(cx + dx + 3, ey - 4.5, 3.2, 0, 7); g.fill(); g.beginPath(); g.arc(cx + dx - 2.5, ey + 4, 1.4, 0, 7); g.fill();
-      }
-      g.fillStyle = "rgba(240,128,120,.42)"; for (const dx of [-40, 40]) { g.beginPath(); g.ellipse(cx + dx, ey + 17, 10, 5.5, 0, 0, 7); g.fill(); }
-      g.strokeStyle = "#7a3b32"; g.lineWidth = 3; g.lineCap = "round"; g.beginPath(); g.arc(cx - 4, ey + 14, 4, .15, Math.PI - .15); g.stroke(); g.beginPath(); g.arc(cx + 4, ey + 14, 4, .15, Math.PI - .15); g.stroke();
-      const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
-    }
-    function makePerson() {
+    /* ================= 2D 插画立牌：小人和黑猫（始终面向镜头） ================= */
+    // 图从 js/characters.js 来（代码画的临时版本，或者你自己画的 PNG）
+    const texOf = new Map();
+    function tex(img) { let t = texOf.get(img); if (!t) { t = new THREE.Texture(img); t.needsUpdate = true; t.anisotropy = 4; texOf.set(img, t); } return t; }
+    const planeG = cached("billboard", () => { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, .5, 0); return g; });
+    const blobG = cached("blob", () => new THREE.CircleGeometry(1, 24));
+    function billboard(kind, height) {
       const g = new THREE.Group(); scene.add(g);
-      const body = new THREE.Group(); g.add(body);
-      const sweater = mat(SEASON.cream, { rough: .9 }), hairM = mat(0x5b3a2a, { rough: .55 }), shoe = mat(0x5b4034, { rough: .5 });
-      Sp(.2, sweater, 0, .3, 0, body).scale.set(1, 1.05, .92);
-      mesh(new THREE.TorusGeometry(.13, .045, 12, 28), mat(SEASON.accent, { rough: .85 }), 0, .47, 0, body).rotation.x = Math.PI / 2;
-      const footL = Sp(.07, shoe, -.08, .05, .03, g); footL.scale.set(1, .65, 1.3);
-      const footR = Sp(.07, shoe, .08, .05, .03, g); footR.scale.set(1, .65, 1.3);
-      const armL = Sp(.065, sweater, -.2, .32, 0, body); armL.scale.set(.8, 1.3, .8);
-      const armR = Sp(.065, sweater, .2, .32, 0, body); armR.scale.set(.8, 1.3, .8);
-      const faces = [faceTex(false), faceTex(true)];
-      const headM = own(TM({ map: faces[0], roughness: .6 }));
-      mesh(new THREE.SphereGeometry(.2, 32, 24), headM, 0, .68, 0, body);
-      mesh(new THREE.SphereGeometry(.212, 32, 20, 0, Math.PI * 2, 0, Math.PI * .5), hairM, 0, .7, -.012, body).rotation.x = -.38;
-      Sp(.07, hairM, 0, .87, -.02, body).scale.set(1.2, .7, 1);
-      const umb = new THREE.Group(); umb.position.set(.14, 0, 0); g.add(umb);
-      Cy(.01, .01, .9, mat(0xd9d4cc, { rough: .3, metal: .5 }), 0, .78, 0, umb, 8);
-      const can = mesh(new THREE.SphereGeometry(.5, 24, 8, 0, Math.PI * 2, 0, Math.PI * .32), own(TM({ color: col(0xd6e3ea), roughness: .1, transparent: true, opacity: .45, side: THREE.DoubleSide, depthWrite: false })), 0, .78, 0, umb, false);
+      const card = new THREE.Group(); g.add(card); // 只绕竖轴转，人物始终站直
+      const m = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: .35, side: THREE.DoubleSide });
+      const plane = new THREE.Mesh(planeG, m); card.add(plane);
+      const gm = new THREE.MeshBasicMaterial({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 });
+      const glowP = new THREE.Mesh(planeG, gm); glowP.position.z = .012; glowP.visible = false; glowP.raycast = () => {}; card.add(glowP);
+      const blob = new THREE.Mesh(blobG, new THREE.MeshBasicMaterial({ color: 0x1b2133, transparent: true, opacity: .22, depthWrite: false }));
+      blob.rotation.x = -Math.PI / 2; blob.position.y = .02; blob.raycast = () => {}; g.add(blob);
+      return { g, card, plane, m, glowP, gm, blob, height, frames: (ART && ART[kind]) || {}, cur: null, asp: 1, face: 1, state: "stand", until: 0, after: null, path: [], y: 0 };
+    }
+    function setFrame(b, name) {
+      const f = b.frames[name] || b.frames[Object.keys(b.frames)[0]];
+      if (f && b.cur !== f) {
+        b.cur = f; b.m.map = tex(f.image); b.m.needsUpdate = true;
+        b.glowP.visible = !!f.glow; if (f.glow) { b.gm.map = tex(f.glow); b.gm.needsUpdate = true; }
+        b.asp = (f.image.width || 1) / (f.image.height || 1);
+      }
+      b.plane.scale.set(b.height * b.asp * b.face, b.height, 1); b.glowP.scale.copy(b.plane.scale);
+    }
+    // 状态：stand 站立 / walk 走路 / happy 开心 / sit 坐着 / work 干活；猫：walk / sit / stretch / rub
+    function act(b, state, ms, then) { b.state = state; b.until = ms ? performance.now() + ms : 0; b.after = then || null; }
+    function faceTo(b, dx, dz) { const s = dx * Math.cos(theta) - dz * Math.sin(theta); if (Math.abs(s) > .12) b.face = s < 0 ? -1 : 1; } // 朝屏幕左边走就翻转
+    // 小人：日系 Q 版人偶（js/chibi.js）：3D 身体 + 手绘脸贴图
+    function makePerson() {
+      const av = Chibi.create({ glasses: true });
+      const g = av.root; g.scale.setScalar(1.15); scene.add(g);
       g.userData.who = "me"; pickables.push(g);
-      return { g, body, footL, footR, armL, armR, headM, faces, umb, can, x: -7, z: 2, y: 0, path: [], blinkAt: 0 };
+      return { g, av, x: -7, z: 2, y: 0, path: [], state: "stand", until: 0, after: null, onArrive: null, sitAt: null, turns: true, expr: null, exprUntil: 0 };
     }
     me = makePerson();
-    // 黑色孟买猫，金色眼睛
+    function feel(name, ms) { me.expr = name; me.exprUntil = performance.now() + ms; } // 一会儿的表情
     function makeCat() {
-      const g = new THREE.Group(); scene.add(g);
-      const fur = mat(0x1d1b20, { rough: .42 }), eye = own(TM({ color: col(0xf2b632), emissive: col(0xf2a320), emissiveIntensity: .25, roughness: .2 }));
-      Sp(.14, fur, 0, .19, 0, g).scale.set(.9, .82, 1.55);
-      const head = new THREE.Group(); head.position.set(0, .3, .2); g.add(head);
-      Sp(.11, fur, 0, 0, 0, head).scale.set(1.05, .95, 1);
-      for (const s of [-1, 1]) {
-        mesh(coneG(.04, .08, 12), fur, s * .06, .1, -.01, head).rotation.z = -s * .3;
-        Sp(.022, eye, s * .042, .015, .092, head).scale.set(1, 1.1, .6);
-        Sp(.009, mat(0x0a0a0a, { rough: .2 }), s * .042, .015, .104, head).scale.set(.45, 1.4, .5);
-      }
-      Sp(.012, mat(0x3a2a2e, { rough: .4 }), 0, -.025, .108, head);
-      const legs = [];
-      for (const [x, z] of [[-.06, -.12], [.06, -.12], [-.06, .12], [.06, .12]]) legs.push(Cy(.025, .022, .13, fur, x, .065, z, g, 8));
-      const tail = new THREE.Group(); tail.position.set(0, .22, -.2); g.add(tail);
-      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, .08, -.1), new THREE.Vector3(0, .22, -.12), new THREE.Vector3(.02, .3, -.06)]);
-      mesh(new THREE.TubeGeometry(curve, 16, .02, 8), fur, 0, 0, 0, tail);
-      g.userData.who = "cat"; pickables.push(g);
-      return { g, legs, tail, x: -6, z: 4, y: 0, path: [], next: 0 };
+      const b = billboard("cat", .52);
+      b.g.userData.who = "cat"; pickables.push(b.g); b.blob.scale.set(.27, .08, 1);
+      return Object.assign(b, { x: -6, z: 4, state: "sit", next: 0 });
     }
     const cat = makeCat();
 
@@ -889,6 +873,7 @@ var Island = (function () {
       const out = []; for (let k = goal; k && k !== start; k = prev.get(k)) out.unshift(k.split(",").map(Number)); return out;
     }
     function goTo(x, z, near) {
+      me.onArrive = null; me.sitAt = null; me.until = 0; me.after = null; if (me.state !== "walk") me.state = "stand";
       let c = cells.get(x + "," + z);
       if (near || !walkable(c)) { let best = null, bd = 99; for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) { const n = cells.get((x + dx) + "," + (z + dz)); if (walkable(n) && findPath(me.x, me.z, n.x, n.z)) { const d = Math.hypot(n.x - me.x, n.z - me.z); if (d < bd) { bd = d; best = n; } } } c = best; }
       if (!c) return; const p = findPath(me.x, me.z, c.x, c.z); if (p) me.path = p;
@@ -1044,6 +1029,7 @@ var Island = (function () {
     $("i3-pcancel").onclick = stopPlacing;
 
     const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    function sitOn(x, y, z, rot) { me.sitAt = new THREE.Vector3(x, y + .22, z); me.sitRot = rot; act(me, "sit"); } // 坐到长椅的座位上
     const top = (o, up) => o.getWorldPosition(new THREE.Vector3()).add(V(0, up, 0));
     function click(e) {
       aim(e);
@@ -1063,8 +1049,14 @@ var Island = (function () {
       const hs = ray.intersectObjects(pickables, true); if (!hs.length) return;
       const ow = owner(hs[0].object); if (!ow) return;
       const lines = T("i3.lines"), what = ow.userData.what;
-      if (ow.userData.who === "me") { bounce(me.g); say(top(me.g, 1.15), lines[Math.floor(Math.random() * lines.length)]); return; }
-      if (ow.userData.who === "cat") { bounce(cat.g); say(top(cat.g, .55), T("i3.meow")); return; }
+      if (ow.userData.who === "me") {
+        const r = Math.random();
+        if (!me.path.length && !me.sitAt) { if (r < .45) act(me, "wave", 1600); else if (r < .75) { act(me, "stand", 1400); feel("laugh", 1400); } else { act(me, "stand", 1200); feel("surprised", 1200); } }
+        else feel(r < .5 ? "laugh" : "surprised", 1200);
+        say(top(me.g, 1.25), lines[Math.floor(Math.random() * lines.length)]); return;
+      }
+      if (ow.userData.who === "cat") { if (!cat.path.length) act(cat, Math.random() < .5 ? "stretch" : "sit", 1700, () => act(cat, "sit", 2500)); say(top(cat.g, .65), T("i3.meow")); return; }
+      if (what === "bench") { const p = ow.position; goTo(Math.round(p.x), Math.round(p.z), true); me.onArrive = () => sitOn(p.x, p.y, p.z, ow.rotation.y); say(top(ow, 1.1), T("i3.sit")); return; }
       if (what === "house") { bounce(house); say(top(house, 3.2), T("i3.house")); flyArea("yard"); return; }
       if (what === "board") { const d = Store.winsOf(); say(top(board, 1.6), d.length ? T("i3.boardDone", { list: d.map(t => t.text).join(T("i3.sep")) }) : T("i3.boardNone")); return; }
       if (what === "sign") { bounce(ow); say(top(ow, 1.4), T("i3.signTo", { name: T("i3.area." + ow.userData.to) })); flyArea(ow.userData.to); return; }
@@ -1073,7 +1065,7 @@ var Island = (function () {
       if (ow.userData.obj) {
         const o = ow.userData.obj; bounce(ow); const t = top(ow, o.type === "tree" ? 2.1 : o.type === "lamp" ? 1.7 : .9);
         if (o.type === "tree") say(t, T("i3.treeLabel", { text: o.label, date: fmtDate(o.date) }));
-        else if (o.type === "bench") { goTo(o.cell.x, o.cell.z, true); say(t, T("i3.sit")); }
+        else if (o.type === "bench") { goTo(o.cell.x, o.cell.z, true); const p = ow.position; me.onArrive = () => sitOn(p.x, p.y, p.z, ow.rotation.y); say(t, T("i3.sit")); }
         else say(t, itemName(o.type));
         return;
       }
@@ -1128,9 +1120,13 @@ var Island = (function () {
       if (d.type === "complete") {
         const t = Store.winsOf().find(w => w.id === d.id); if (!t) return;
         const g = plantTree(t, true); Store.save();
-        if (g) { const c = g.userData.obj.cell; goTo(c.x, c.z, true); setTimeout(() => say(V(c.x, c.h + 2.2, c.z), T("i3.planted", { text: t.text })), 350); }
+        if (g) {
+          const c = g.userData.obj.cell; goTo(c.x, c.z, true);
+          me.onArrive = () => { me.g.rotation.y = Math.atan2(c.x - me.x, c.z - me.z); act(me, "work", 2400, () => act(me, "happy", 1500)); }; // 走过去浇浇水，然后开心一下
+          setTimeout(() => say(V(c.x, c.h + 2.2, c.z), T("i3.planted", { text: t.text })), 350);
+        }
         else say(top(me.g, 1.15), T("i3.full"));
-      } else if (d.type === "undo" || d.type === "remove") removeTree(d.id);
+      } else if (d.type === "undo" || d.type === "remove") { removeTree(d.id); if (d.type === "undo") feel("sad", 1800); }
       refresh();
     });
     showPage("tasks");
@@ -1179,7 +1175,6 @@ var Island = (function () {
       const on = rainK > .02;
       rainMat.opacity = rainK * .28; rainMesh.visible = on;
       puddles.forEach(p => p.material.opacity = rainK * .32);
-      me.umb.visible = rainK > .4;
       if (!on) { ripples.forEach(r => r.m.material.opacity = 0); return; }
       const spd = reduce ? .25 : 1;
       for (let i = 0; i < RN; i++) {
@@ -1227,6 +1222,7 @@ var Island = (function () {
       hemi.color.copy(col(0x9aa8dc)).lerp(col(0xffffff), day); hemi.groundColor.copy(col(0x4c5878)).lerp(col(0x5a6a4a), day);
       hemi.intensity = Math.max(.5, (.7 + .05 * day) * (1 - .1 * rainK)); // 夜里、雨天也看得清：环境光不低于 0.5
       const night = clamp(1 - day + rainK * .35, 0, 1);
+      if (window.Chibi) Chibi.setBrightness(.74 + .26 * day); // 小人用自己的柔和着色，晚上跟着暗一点
       lampOn = clamp((night - .55) / .35, 0, 1);
       const tt = now / 1000;
       glows.forEach(g => {
@@ -1246,7 +1242,7 @@ var Island = (function () {
     $("i3-tipok").onclick = () => { $("i3-tip").hidden = true; try { localStorage.setItem("winslog-island3d-tip", "1"); } catch (e) {} };
 
     /* ================= 每一帧 ================= */
-    let last = performance.now(), lastMin = -1;
+    let last = performance.now(), lastMin = -1, lastDt = .016;
     function stepWalker(w, dt, speed, now, anim) {
       let moving = false;
       if (w.path.length) {
@@ -1254,29 +1250,68 @@ var Island = (function () {
         if (d < .04) { w.x = tx; w.z = tz; w.path.shift(); }
         else {
           const st = Math.min(d, speed * dt); w.x += dx / d * st; w.z += dz / d * st; moving = true;
-          const want = Math.atan2(dx, dz); let diff = want - w.g.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); w.g.rotation.y += diff * Math.min(1, dt * 10);
+          if (w.turns) { const want = Math.atan2(dx, dz); let diff = want - w.g.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); w.g.rotation.y += diff * Math.min(1, dt * 10); }
+          else faceTo(w, dx, dz);
         }
       }
       const c = cellAt(w.x, w.z); const gh = (c ? c.h : 0) + bump(w.x, w.z);
       w.y += (gh - w.y) * Math.min(1, dt * 12);
-      const sw = moving && !reduce ? Math.sin(now * .016) : 0;
-      w.g.position.set(w.x, w.y + (moving && !reduce ? Math.abs(sw) * .035 : 0), w.z);
-      if (anim) anim(sw, moving, now);
+      w.g.position.set(w.x, w.y, w.z);
       return moving;
     }
-    const meAnim = (sw, moving, now) => {
-      me.footL.position.z = .03 + sw * .07; me.footR.position.z = .03 - sw * .07;
-      me.armL.rotation.x = -sw * .5; me.armR.rotation.x = sw * .5;
-      me.body.position.y = moving ? 0 : Math.sin(now * .002) * .008; // 站着时轻轻呼吸
-      if (now > me.blinkAt) { me.headM.map = me.faces[1]; me.blinkAt = now + 2600 + Math.random() * 2600; setTimeout(() => { me.headM.map = me.faces[0]; }, 130); }
-    };
-    const catAnim = (sw, moving, now) => {
-      cat.legs.forEach((l, i) => l.rotation.x = (i % 2 ? sw : -sw) * .6);
-      cat.tail.rotation.z = Math.sin(now * .0021) * .35; cat.tail.rotation.x = Math.sin(now * .0013) * .12;
-    };
+    function updateMe(now, moving) {
+      if (moving) { if (me.state !== "walk") { me.state = "walk"; me.until = 0; me.after = null; } }
+      else {
+        if (me.state === "walk") me.state = "stand";
+        if (me.onArrive) { const f = me.onArrive; me.onArrive = null; f(); }
+        if (me.until && now > me.until) { const a = me.after; me.until = 0; me.after = null; me.state = "stand"; if (a) a(); }
+      }
+      if (me.sitAt) { me.g.position.copy(me.sitAt); if (me.sitRot != null) me.g.rotation.y = me.sitRot; }
+      // 表情：完成任务时开心；深夜会犯困；被点到时可能大笑或吓一跳
+      let expr = hours >= 22.5 || hours < 5 ? "sleepy" : "normal";
+      if (me.state === "happy" || me.state === "wave") expr = "happy";
+      if (me.expr && now < me.exprUntil) expr = me.expr; else me.expr = null;
+      me.av.update({ state: me.state, expr, rain: rainK > .4, now, dt: lastDt });
+    }
+    // 黑猫：闲逛、坐下、伸懒腰，偶尔跟着小人走、过来蹭蹭
+    function decideCat(now) {
+      const dx = me.x - cat.x, dz = me.z - cat.z, d = Math.hypot(dx, dz), r = Math.random();
+      cat.next = now + 2500 + Math.random() * 3500;
+      if (!me.path.length && !me.sitAt && d < 2.3 && r < .45) { act(cat, "rub", 2600); return; }
+      if (d > 4 && r < .5) {
+        let best = null, bd = 99;
+        for (const [ax, az] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const n = cells.get((Math.round(me.x) + ax) + "," + (Math.round(me.z) + az)); if (!walkable(n)) continue;
+          const dd = Math.hypot(n.x - cat.x, n.z - cat.z); if (dd < bd) { bd = dd; best = n; }
+        }
+        const p = best && findPath(cat.x, cat.z, best.x, best.z); if (p && p.length) { cat.path = p.slice(0, 14); return; }
+      }
+      if (r < .62) {
+        const n = cells.get((Math.round(cat.x) + Math.round(Math.random() * 2 - 1)) + "," + (Math.round(cat.z) + Math.round(Math.random() * 2 - 1)));
+        const from = cellAt(cat.x, cat.z); if (walkable(n) && from && canStep(from, n)) { cat.path = [[n.x, n.z]]; return; }
+      }
+      if (r < .82) { act(cat, "stretch", 1700, () => act(cat, "sit", 2500)); return; }
+      act(cat, "sit", 3000);
+    }
+    function updateCat(now, moving, dt) {
+      if (moving) { cat.state = "walk"; cat.until = 0; cat.after = null; }
+      else {
+        if (cat.state === "walk") cat.state = "sit";
+        if (cat.until && now > cat.until) { const a = cat.after; cat.until = 0; cat.after = null; cat.state = "sit"; if (a) a(); }
+        if (now > cat.next && !cat.until) decideCat(now);
+      }
+      if (cat.state === "rub") { // 走到小人脚边蹭一蹭
+        const dx = me.g.position.x - cat.x, dz = me.g.position.z - cat.z, d = Math.hypot(dx, dz);
+        if (d > .45) { const st = Math.min(d - .45, .9 * dt); cat.x += dx / d * st; cat.z += dz / d * st; cat.g.position.x = cat.x; cat.g.position.z = cat.z; }
+        faceTo(cat, dx, dz);
+      }
+      const fr = cat.state === "walk" ? "walk" + (1 + Math.floor(now / 140) % 3) : cat.state;
+      setFrame(cat, fr);
+      cat.gm.opacity = .3 + lampOn * .7; // 琥珀色的眼睛，晚上更亮一点
+    }
     function loop(now) {
       requestAnimationFrame(loop);
-      const dt = Math.min(.05, (now - last) / 1000); last = now;
+      const dt = Math.min(.05, (now - last) / 1000); last = now; lastDt = dt;
       if (view.hidden) return;
       stepFly(now);
       if (live) { const d = new Date(); hours = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600; const m = d.getHours() * 60 + d.getMinutes(); if (m !== lastMin) { lastMin = m; $("i3-time").value = m; } }
@@ -1299,8 +1334,10 @@ var Island = (function () {
         const k = p.t; p.sp.position.set(smokeTop.x + Math.sin(k * 3 + p.seed * 6) * .12 + k * .5, smokeTop.y + k * 2.4, smokeTop.z + k * .25);
         p.sp.scale.setScalar(.22 + k * .9); p.sp.material.opacity = Math.sin(Math.PI * Math.min(1, k * 1.2)) * .32 * (1 - rainK * .5);
       });
-      stepWalker(me, dt, 2.4, now, meAnim);
-      if (!stepWalker(cat, dt, 1.1, now, catAnim) && now > cat.next) { const n = cells.get((Math.round(cat.x) + Math.round(Math.random() * 2 - 1)) + "," + (Math.round(cat.z) + Math.round(Math.random() * 2 - 1))); const from = cellAt(cat.x, cat.z); if (walkable(n) && from && canStep(from, n)) cat.path = [[n.x, n.z]]; cat.next = now + 2000 + Math.random() * 3500; }
+      updateMe(now, stepWalker(me, dt, 2.2, now));
+      updateCat(now, stepWalker(cat, dt, 1.1, now), dt);
+      const tint = 1 - lampOn * .22; // 立牌不受灯光影响，晚上整体稍微暗一点
+      cat.card.rotation.y = Math.atan2(cam.position.x - cat.g.position.x, cam.position.z - cat.g.position.z); cat.m.color.setScalar(tint);
       for (let i = grows.length - 1; i >= 0; i--) { const g = grows[i], k = Math.min(1, (now - g.t0) / 900), e = 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2); g.g.scale.setScalar(Math.max(.01, e)); if (k >= 1) { g.g.scale.setScalar(1); grows.splice(i, 1); } }
       for (let i = bounces.length - 1; i >= 0; i--) { const b = bounces[i], k = (now - b.t0) / 350; if (k >= 1) { b.o.scale.copy(b.s); bounces.splice(i, 1); } else { const q = 1 + Math.sin(k * Math.PI) * .07; b.o.scale.set(b.s.x / q, b.s.y * q, b.s.z / q); } }
       if (bubbleAt) { if (now > bubbleT) { bubble.classList.remove("is-on"); bubbleAt = null; } else { const v = bubbleAt.clone().project(cam); bubble.style.left = ((v.x + 1) / 2 * VW) + "px"; bubble.style.top = ((1 - v.y) / 2 * VH) + "px"; } }
@@ -1309,13 +1346,16 @@ var Island = (function () {
     me.g.position.set(me.x, 0, me.z); cat.g.position.set(cat.x, 0, cat.z);
     const qa = /area=(\w+)/.exec(location.hash), qt = /time=([\d.]+)/.exec(location.hash);
     if (qa && AREAS[qa[1]]) { const a = AREAS[qa[1]]; tgt.set(a.t[0], a.t[1], a.t[2]); dist = a.d; phi = a.phi; }
+    if (qa && qa[1] === "me") { tgt.set(me.x, .55, me.z); dist = 3.2; phi = .2; theta = 0; } // #area=me：拉近看小人（正面）
+    const qth = /theta=(-?[\d.]+)/.exec(location.hash); if (qth) theta = +qth[1];
+    if (/walk/.test(location.hash)) { me.path = [[-7, 3], [-6, 3], [-5, 3], [-4, 3], [-3, 3], [-3, 4], [-3, 5], [-3, 6], [-3, 7], [-3, 8]]; }
     const freeze = h => { live = false; hours = clamp(h, 0, 23.99); $("i3-time").value = Math.round(hours * 60); $("i3-live").classList.remove("is-on"); $("i3-live").textContent = T("i3.back"); };
     if (qt) freeze(+qt[1]);
     else { const h = new Date().getHours(); if (h >= 21 || h < 5) freeze(18.5); } // 深夜打开时先显示傍晚 18:30，想看现在点「回到现在」
     resize();
     new MutationObserver(() => { if (!view.hidden) resize(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     requestAnimationFrame(loop);
-    camInfo = () => ({ x: +tgt.x.toFixed(2), y: +tgt.y.toFixed(2), z: +tgt.z.toFixed(2), dist: +dist.toFixed(2), theta: +theta.toFixed(2), phi: +phi.toFixed(2), quality: Q, lights: lights.length });
+    camInfo = () => ({ x: +tgt.x.toFixed(2), y: +tgt.y.toFixed(2), z: +tgt.z.toFixed(2), dist: +dist.toFixed(2), theta: +theta.toFixed(2), phi: +phi.toFixed(2), quality: Q, lights: lights.length, me: me.state + (me.sitAt ? "@bench" : ""), meFace: me.face, cat: cat.state });
   }
 
   let camInfo = () => null;
