@@ -37,6 +37,9 @@
   Settings.init();
   if (window.ChibiPreview) ChibiPreview.init();
 
+  // ---- 历史、本月；没有记录时提示可以从备份导入 ----
+  History.init();
+
   // ---- 切换 小岛 / 世界地图 ----
   var tabs = document.querySelectorAll(".tab[data-view]");
   tabs.forEach(function (tab) {

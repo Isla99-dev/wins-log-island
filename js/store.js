@@ -29,8 +29,16 @@ var Store = (function () {
     return { version: 1, days: {}, meta: {} };
   }
 
+  // 记录永久保存、按日期存，任何时候都不自动删除。
+  // 读不出来的旧数据也不会被盖掉：先原样留一份，再另起一份新的。
+  var rawLoaded = null;
+  try { rawLoaded = localStorage.getItem(KEY); } catch (e) { /* 读不到就当没有 */ }
+  var hadStorage = rawLoaded !== null; // 这个浏览器里以前有没有存过
   var data = read(KEY);
-  if (!data || typeof data !== "object" || !data.days) data = fresh();
+  if (!data || typeof data !== "object" || !data.days) {
+    if (rawLoaded) { try { localStorage.setItem(KEY + ".unreadable-" + Date.now(), rawLoaded); } catch (e) {} }
+    data = fresh();
+  }
   if (!data.meta) data.meta = {};
 
   function save() {
@@ -138,6 +146,8 @@ var Store = (function () {
       return { days: days.length, wins: wins };
     },
     importData: function (obj) {
+      // 导入会替换现在的记录：替换之前先把现在的整份留一份，万一导错了还能找回来
+      try { localStorage.setItem(KEY + ".before-import", JSON.stringify(data)); } catch (e) {}
       data = obj.data;
       if (!data.meta) data.meta = {};
       data.meta.importedV1 = true; // 导入后不再从旧版原型重复导入
@@ -148,6 +158,11 @@ var Store = (function () {
       save();
     },
     lastBackupAt: function () { return data.meta.lastBackupAt || null; },
+    // ---------- 历史：按天查（只读，不会新建空的一天） ----------
+    hadStorage: hadStorage,
+    dayKeys: dayKeys,                       // 有记录的日期，从早到晚
+    hasData: function () { return dayKeys().length > 0; },
+    dayInfo: dayInfo,                       // { key, total, done, wins:[已完成，按时间], open:[没做完], endedAt }
     allDays: function () {
       return Object.keys(data.days).sort().map(function (k) { return { key: k, tasks: data.days[k].tasks || [] }; });
     },
@@ -187,6 +202,15 @@ var Store = (function () {
     },
     importIsland3d: importIsland3d
   };
+
+  function dayKeys() {
+    return Object.keys(data.days).filter(function (k) { return data.days[k] && data.days[k].tasks && data.days[k].tasks.length; }).sort();
+  }
+  function dayInfo(key) {
+    var d = data.days[key], tasks = (d && d.tasks) || [];
+    var wins = tasks.filter(function (t) { return t.doneAt; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
+    return { key: key, total: tasks.length, done: wins.length, wins: wins, open: tasks.filter(function (t) { return !t.doneAt; }), endedAt: (d && d.endedAt) || null };
+  }
 
   function island() {
     if (!data.island || typeof data.island !== "object") data.island = {};

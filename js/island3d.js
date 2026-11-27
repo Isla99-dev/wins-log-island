@@ -1084,6 +1084,7 @@ var Island = (function () {
       refresh();
     }
     panel.querySelector(".i3-tabs").addEventListener("click", e => { const b = e.target.closest(".i3-tab"); if (b) showPage(b.dataset.page); });
+    document.addEventListener("island:page", e => { const p = e.detail && e.detail.page; if (p) { showPage(p); const el = panel.querySelector('.i3-page[data-page="' + p + '"]'); if (el) el.scrollTop = 0; } });
     document.addEventListener("wins:ask", () => showPage("helper"));
 
     function drawBoard() {
@@ -1107,12 +1108,9 @@ var Island = (function () {
           '<p class="i3-note">' + esc(T("i3.shopNote")) + "</p>";
         $("i3-shop").querySelectorAll("[data-buy]").forEach(x => x.onclick = () => startPlacing(SHOP.find(s => s.id === x.dataset.buy)));
       } else if (page === "month") {
-        const by = {};
-        Store.allWins().forEach(t => { const m = Store.dayKey(new Date(t.doneAt)).slice(0, 7); (by[m] = by[m] || []).push(t); });
-        const ms = Object.keys(by).sort().reverse();
-        const mons = T("months") || [];
-        $("i3-month").innerHTML = ms.length ? ms.map(m => '<div class="i3-month"><b>' + esc(T("i3.monthTitle", { y: m.slice(0, 4), m: +m.slice(5), mon: mons[+m.slice(5) - 1] || "" })) + "</b><p>" + esc(T("i3.monthTrees", { n: by[m].length })) + "</p><p>" + by[m].slice(-4).map(t => esc(t.text)).join(" · ") + "</p></div>").join("")
-          : '<p class="i3-note">' + esc(T("i3.monthEmpty")) + "</p>";
+        History.renderMonth($("i3-month")); // 本月：用历史数据（js/history.js）
+      } else if (page === "history") {
+        History.renderCalendar($("i3-history")); // 历史：月历 + 某一天的完整清单
       }
     }
     document.addEventListener("wins:change", e => {
@@ -1130,6 +1128,9 @@ var Island = (function () {
       refresh();
     });
     showPage("tasks");
+    // 网址后面加 #page=history / #page=month / #day=2026-11-26，截图检查用
+    const qpg = /page=(\w+)/.exec(location.hash), qday = /day=(\d{4}-\d\d-\d\d)/.exec(location.hash);
+    if (qday) History.openDay(qday[1]); else if (qpg) showPage(qpg[1]);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawBoard);
 
     /* ================= 天气、落叶、灯泡、星星 ================= */

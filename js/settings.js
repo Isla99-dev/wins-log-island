@@ -175,5 +175,8 @@ var Settings = (function () {
     });
   }
 
-  return { init: init, open: open };
+  // 从别处（比如「没有记录」的提示）直接打开设置并选备份文件
+  function importPrompt() { open(); chooseFile(); }
+
+  return { init: init, open: open, importPrompt: importPrompt };
 })();

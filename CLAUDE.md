@@ -49,6 +49,8 @@ Wins Log 小岛
 - 3D 用 three.js r128 的非 module 版本，放在 `lib/`（MIT，许可文件 `lib/LICENSE-three.txt`）。不要升级到只有 ES module 的新版本。
 - 3D 模型（Kenney CC0）以 base64 打包在 `js/models.js` 里（双击打开时浏览器不让读 .glb 文件），许可在 `models/LICENSE-kenney.txt`。要加新模型：重新生成 `js/models.js`，不要手改。
 - 小岛网址后面加 `#area=forest`、`#time=22` 可以直接看某个区域 / 时间，截图检查用。
+- 小岛网址后面加 `#page=history`、`#page=month`、`#day=2026-11-26` 可以直接打开右边面板的某一页 / 某一天的历史，截图检查用。
+- **Wins 永久保存**：按日期存在 `winslog-island-v1` 里，任何时候都不自动删除。导入备份前会自动把现在的整份另存到 `winslog-island-v1.before-import`；读不出来的旧数据会原样留在 `winslog-island-v1.unreadable-<时间>`，不会被新的空记录盖掉。「今日任务」「今天的 Wins」只显示当天，要看以前的去「历史」页（`js/history.js`，只读）。
 - AI 功能先用模拟回复占位，以后再接入真正的 AI 接口。
 - **API 密钥绝不能写进网页文件**。以后接入真 AI 时，通过一个本地小后端或代理转发请求，由它保管密钥。
 

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/island3d.css">
+<link rel="stylesheet" href="css/history.css">
 </head>
 <body class="on-island">
 
@@ -54,10 +55,18 @@
       <button class="i3-tab is-on" type="button" data-page="tasks" data-i18n="i3.tabTasks">任务</button>
       <button class="i3-tab" type="button" data-page="shop" data-i18n="i3.tabShop">商店</button>
       <button class="i3-tab" type="button" data-page="month" data-i18n="i3.tabMonth">本月</button>
+      <button class="i3-tab" type="button" data-page="history" data-i18n="i3.tabHistory">历史</button>
       <button class="i3-tab" type="button" data-page="helper" data-i18n="i3.tabHelper">助手</button>
     </div>
 
     <div class="i3-page tasks" data-page="tasks">
+      <div class="notice" id="nodata-notice" role="status" hidden>
+        <p data-i18n="notice.noData"></p>
+        <div class="notice-actions">
+          <button class="i3-btn" id="nodata-import" type="button" data-i18n="notice.import">📂 导入备份</button>
+          <button class="i3-btn" id="nodata-dismiss" type="button" data-i18n="notice.dismiss">知道了</button>
+        </div>
+      </div>
       <form class="task-entry" id="task-form" autocomplete="off">
         <input type="text" id="task-input" maxlength="200" data-i18n-placeholder="tasks.placeholder" data-i18n-aria="tasks.inputAria">
         <button class="pixel-btn" type="submit" data-i18n="tasks.add">种下</button>
@@ -78,6 +87,7 @@
 
     <div class="i3-page" data-page="shop" id="i3-shop" hidden></div>
     <div class="i3-page" data-page="month" id="i3-month" hidden></div>
+    <div class="i3-page" data-page="history" id="i3-history" hidden></div>
 
     <div class="i3-page helper" data-page="helper" hidden>
       <div class="helper-head">
@@ -255,6 +265,7 @@
 <script src="js/models.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/characters.js"></script>
+<script src="js/history.js"></script>
 <script src="js/chibi.js"></script>
 <script src="js/chibi-preview.js"></script>
 <script src="js/sound.js"></script>
