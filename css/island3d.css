@@ -25,12 +25,12 @@ body.on-island .footnote { display: none; }
 .i3-now { font-family: var(--font-pixel); font-size: 30px; line-height: 1.1; }
 #i3-period { font-family: var(--font-cute); flex: 1; }
 .i3-live { font-size: 12px; min-height: 26px; min-width: 0; padding: 0 8px; white-space: nowrap; }
-.i3-live.is-on { background: #e6f5df; color: #2f6e25; }
+.i3-live.is-on { background: #dde7d1; color: var(--moss-dark); }
 #i3-time { width: 100%; accent-color: var(--berry); height: 24px; margin: 2px 0 0; }
-.i3-marks { display: flex; justify-content: space-between; font-size: 12px; color: var(--wood-dark); }
+.i3-marks { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
 .i3-purse {
   display: flex; justify-content: space-between; gap: 8px;
-  margin-top: 6px; padding-top: 6px; border-top: 2px dashed rgba(110, 64, 41, .35);
+  margin-top: 6px; padding-top: 6px; border-top: 2px dashed rgba(74, 58, 46, .25);
   font-family: var(--font-cute); font-size: 14px;
 }
 .i3-purse b { font-family: var(--font-pixel); color: var(--berry); font-size: 17px; }
@@ -50,19 +50,19 @@ body.on-island .footnote { display: none; }
   box-shadow: 0 -2px 0 0 var(--wood-dark), 0 2px 0 0 var(--wood-dark), -2px 0 0 0 var(--wood-dark), 2px 0 0 0 var(--wood-dark);
 }
 .i3-tab:hover { color: var(--ink); }
-.i3-tab.is-on { background: var(--wood); color: var(--parchment); }
+.i3-tab.is-on { background: var(--clay); color: var(--paper); box-shadow: 0 -2px 0 0 var(--clay-dark), 0 2px 0 0 var(--clay-dark), -2px 0 0 0 var(--clay-dark), 2px 0 0 0 var(--clay-dark); }
 .i3-page { overflow-y: auto; min-height: 0; flex: 1; padding: 4px 6px 6px; margin: 0 -6px;
   scrollbar-width: thin; scrollbar-color: var(--wood-light) transparent; }
 .i3-page .panel-foot { margin-top: 16px; }
 .i3-page.helper { display: flex; flex-direction: column; }
 .i3-page.helper .chat-log { max-height: none; flex: 1; min-height: 160px; }
 
-.i3-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 2px dashed rgba(110, 64, 41, .2); }
+.i3-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 2px dashed rgba(74, 58, 46, .18); }
 .i3-item > span { flex: 1; font-family: var(--font-cute); }
 .i3-item small { display: block; font-family: var(--font-body); font-size: 12px; color: var(--ink-soft); }
 .i3-item b { font-family: var(--font-pixel); color: var(--berry); }
 .i3-note { font-size: 13px; color: var(--ink-soft); margin-top: 10px; }
-.i3-month { padding: 10px 12px; margin-bottom: 10px; background: #fffaf0; box-shadow: inset 0 0 0 2px var(--parchment-deep); }
+.i3-month { padding: 10px 12px; margin-bottom: 10px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); }
 .i3-month b { font-family: var(--font-cute); font-weight: 400; font-size: 17px; }
 .i3-month p { font-size: 13px; color: var(--ink-soft); overflow-wrap: anywhere; }
 
@@ -71,13 +71,13 @@ body.on-island .footnote { display: none; }
 .i3-btn {
   min-width: 40px; min-height: 34px; padding: 2px 10px; cursor: pointer; border: 0;
   font-family: var(--font-cute); font-size: 14px; color: var(--ink);
-  background: var(--parchment);
+  background: var(--paper);
   box-shadow: 0 -2px 0 0 var(--wood-dark), 0 2px 0 0 var(--wood-dark), -2px 0 0 0 var(--wood-dark), 2px 0 0 0 var(--wood-dark), 0 4px 0 0 rgba(74, 47, 34, .3);
 }
-.i3-btn:hover { background: #fff6dc; color: var(--berry); }
+.i3-btn:hover { background: #fffaf0; color: var(--clay); }
 .i3-btn:disabled { opacity: .45; cursor: not-allowed; color: var(--ink-soft); }
 .i3-btn:focus-visible { outline: 2px dashed var(--berry); outline-offset: 3px; }
-.i3-areas { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 2px dashed rgba(110, 64, 41, .35); }
+.i3-areas { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 2px dashed rgba(74, 58, 46, .25); }
 .i3-areas .i3-btn { min-height: 30px; font-size: 13px; padding: 1px 8px; }
 .i3-areas .i3-btn.is-on { background: var(--leaf); color: #fff; }
 .i3-show { position: absolute; z-index: 6; left: 14px; bottom: 14px; display: none; opacity: .85; }
@@ -94,7 +94,7 @@ body.on-island .footnote { display: none; }
   position: fixed; z-index: 8; left: 0; top: 0; pointer-events: none;
   max-width: 240px; padding: 6px 11px 7px;
   font-family: var(--font-cute); font-size: 14px; line-height: 1.45; color: var(--ink);
-  background: #fffaf0;
+  background: var(--paper);
   box-shadow: 0 -2px 0 0 var(--wood-dark), 0 2px 0 0 var(--wood-dark), -2px 0 0 0 var(--wood-dark), 2px 0 0 0 var(--wood-dark), 0 5px 0 0 rgba(20, 14, 10, .25);
   transform: translate(-50%, calc(-100% - 12px));
   opacity: 0; transition: opacity .2s;
@@ -144,3 +144,9 @@ body.on-island .footnote { display: none; }
 .chibi-btns .i3-btn.is-on, #chibi-rain.is-on { background: var(--leaf); color: #fff; }
 @media (max-width: 820px) { #chibi-canvas { height: 220px; } .chibi-views span { font-size: 12px; } }
 #chibi-modal { z-index: 60; }
+
+/* 选中的按钮（区域、动作、表情、雨伞）：灰绿 */
+.i3-btn.is-on { background: var(--moss); color: var(--paper); }
+/* 商店里的「买」：奶油黄 */
+.i3-item .i3-btn { background: var(--butter); }
+.i3-item .i3-btn:disabled { background: var(--parchment-deep); }

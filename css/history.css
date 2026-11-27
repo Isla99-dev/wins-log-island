@@ -2,7 +2,7 @@
 .i3-tabs { flex-wrap: nowrap; }
 .i3-tab { min-width: 0; padding-left: 2px; padding-right: 2px; }
 
-.notice { margin: 0 0 12px; padding: 10px 12px; background: #fffaf0; box-shadow: inset 0 0 0 2px var(--parchment-deep); font-size: 13px; line-height: 1.55; color: var(--ink); }
+.notice { margin: 0 0 12px; padding: 10px 12px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); font-size: 13px; line-height: 1.55; color: var(--ink); }
 .notice[hidden] { display: none; }
 .notice-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 
@@ -13,7 +13,7 @@
 .hist-arrow { min-width: 32px; padding: 0 6px; }
 .hist-wk, .hist-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .hist-wk span { text-align: center; font-size: 12px; color: var(--ink-soft); padding-bottom: 2px; }
-.hist-day { position: relative; aspect-ratio: 1 / 1; min-height: 36px; border: 0; cursor: pointer; background: #fffaf0; color: var(--ink); font: inherit; font-size: 13px; padding: 2px 3px; text-align: left; box-shadow: inset 0 0 0 2px var(--parchment-deep); }
+.hist-day { position: relative; aspect-ratio: 1 / 1; min-height: 36px; border: 0; cursor: pointer; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; padding: 2px 3px; text-align: left; box-shadow: inset 0 0 0 2px var(--parchment-deep); }
 .hist-day .n { position: absolute; left: 4px; top: 2px; line-height: 1.2; }
 .hist-day b { position: absolute; right: 4px; bottom: 1px; font-family: var(--font-body); font-weight: 700; font-size: 14px; color: var(--ink); }
 .hist-day.lv1 { background: rgba(122, 154, 102, .22); }
@@ -27,12 +27,12 @@
 .hist-day:focus-visible, .hist-dayhead:focus-visible, .hist-monthrow:focus-visible { outline: 2px dashed var(--berry); outline-offset: 2px; }
 .hist-pad { display: block; }
 
-.hist-detail { margin-top: 14px; padding-top: 10px; border-top: 2px dashed rgba(110, 64, 41, .3); }
+.hist-detail { margin-top: 14px; padding-top: 10px; border-top: 2px dashed rgba(74, 58, 46, .25); }
 .hist-detail-head { display: flex; align-items: center; gap: 8px; }
 .hist-detail-head > div { flex: 1; text-align: center; }
 .hist-badge { font-style: normal; font-family: var(--font-body); font-size: 11px; padding: 0 6px; background: var(--berry); color: #fff; vertical-align: 2px; }
 .hist-list, .hist-daylist ul { list-style: none; margin: 10px 0 0; padding: 0; }
-.hist-list li, .hist-daylist li { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 2px dashed rgba(110, 64, 41, .18); }
+.hist-list li, .hist-daylist li { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 2px dashed rgba(74, 58, 46, .16); }
 .hist-list .star, .hist-daylist .star { color: var(--star); flex: none; width: 1em; text-align: center; }
 .hist-list .txt, .hist-daylist .txt { flex: 1; overflow-wrap: anywhere; }
 .hist-list time, .hist-daylist time { flex: none; font-family: var(--font-pixel); font-size: 12px; color: var(--ink-soft); }
@@ -43,10 +43,10 @@
 .hist-h2 { font-family: var(--font-cute); font-weight: 400; font-size: 16px; margin: 18px 0 6px; }
 .hist-sub { font-size: 13px; color: var(--ink-soft); margin: 2px 0 6px; }
 .hist-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
-.hist-stats div { background: #fffaf0; box-shadow: inset 0 0 0 2px var(--parchment-deep); padding: 6px 4px; text-align: center; line-height: 1.2; }
+.hist-stats div { background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); padding: 6px 4px; text-align: center; line-height: 1.2; }
 .hist-stats b { display: block; font-family: var(--font-pixel); font-size: 22px; color: var(--berry); }
 .hist-stats span { font-size: 12px; color: var(--ink-soft); }
-.hist-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin: 6px 0 12px; padding: 2px; background: #fffaf0; box-shadow: inset 0 0 0 2px var(--parchment-deep); }
+.hist-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin: 6px 0 12px; padding: 2px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--parchment-deep); }
 .hist-bars button { flex: 1; height: 100%; border: 0; background: none; display: flex; align-items: flex-end; padding: 0; cursor: pointer; }
 .hist-bars button i { display: block; width: 100%; background: var(--leaf); }
 .hist-bars button.is-today i { background: var(--berry); }
@@ -55,7 +55,7 @@
 .hist-dayhead { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border: 0; background: var(--parchment-deep); padding: 4px 8px; cursor: pointer; font: inherit; color: var(--ink); }
 .hist-dayhead b { font-family: var(--font-cute); font-weight: 400; }
 .hist-dayhead span { font-size: 12px; color: var(--ink-soft); }
-.hist-monthrow { width: 100%; display: flex; justify-content: space-between; gap: 8px; border: 0; background: none; padding: 7px 2px; cursor: pointer; font: inherit; color: var(--ink); border-bottom: 2px dashed rgba(110, 64, 41, .18); text-align: left; }
+.hist-monthrow { width: 100%; display: flex; justify-content: space-between; gap: 8px; border: 0; background: none; padding: 7px 2px; cursor: pointer; font: inherit; color: var(--ink); border-bottom: 2px dashed rgba(74, 58, 46, .16); text-align: left; }
 .hist-monthrow b { font-family: var(--font-cute); font-weight: 400; }
 .hist-monthrow span { font-size: 12px; color: var(--ink-soft); }
 .hist-monthrow:hover { color: var(--berry); }

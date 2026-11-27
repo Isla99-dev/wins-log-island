@@ -55,4 +55,12 @@
 
   // ---- 3D 小岛 ----
   Island.init();
+
+  // 网址后面加 #view=map、#modal=settings、#modal=printer，截图检查用
+  var hv = /view=(\w+)/.exec(location.hash), hm = /modal=(\w+)/.exec(location.hash);
+  if (hv && hv[1] === "map") { var mapTab = document.querySelector('.tab[data-view="map"]'); if (mapTab) mapTab.click(); }
+  if (hm) setTimeout(function () {
+    if (hm[1] === "settings") Settings.open();
+    else if (hm[1] === "printer") $("end-day").click();
+  }, 700);
 })();

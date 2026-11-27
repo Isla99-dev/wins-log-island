@@ -13,8 +13,8 @@ var Receipt = (function () {
   var ZIG = 7;          // 撕口锯齿高度
 
   var COLOR = {
-    paper: "#fffdf5", ink: "#4a2f22", soft: "#9a7d66",
-    line: "#d9c6a6", star: "#ffcf4a", starEdge: "#6e4029", berry: "#e06a62"
+    paper: "#fffdf5", ink: "#4a3a2e", soft: "#8a7561",
+    line: "#ddcdb2", star: "#d9ac52", starEdge: "#8e6f3a", berry: "#b8735c"
   };
   var FONT = {
     title: "600 24px 'Pixelify Sans', 'ZCOOL KuaiLe', sans-serif",
