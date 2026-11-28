@@ -32,18 +32,23 @@ var AIMode = (function () {
       return { text: t.text, date: Store.dayKey(new Date(t.doneAt)) };
     });
   }
-  // 一份很短的用户摘要（先放事实，以后可以由用户自己改）
-  function summary() {
-    var m = Store.userMeta();
-    if (m.summary) return String(m.summary).slice(0, 500);
-    var days = Store.dayKeys().length, all = Store.allWins().length;
-    return days ? "已经记录了 " + days + " 天、共 " + all + " 件 Wins。" : "";
-  }
+  // 用户摘要：小助手记得的事（js/ai/memory.js 维护，200 字以内；清空后就是空的）
+  function summary() { return String(Store.userMeta().summary || "").slice(0, 200); }
 
   function buildRequest(text, lang) {
     var d = new Date(), pad = function (n) { return (n < 10 ? "0" : "") + n; };
     return { text: text, wins: recentWins(), summary: summary(), energy: Store.userMeta().energy || null,
              time: pad(d.getHours()) + ":" + pad(d.getMinutes()), lang: lang };
+  }
+
+  // 发到 worker 的其他接口（比如 /summary）。没配 ENDPOINT 时返回 null，由调用方自己用假数据
+  function post(path, body) {
+    if (!ENDPOINT) return null;
+    var url = ENDPOINT.replace(/\/chat$/, path);
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, TIMEOUT_MS) : 0;
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { clearTimeout(timer); return r.json(); }, function (e) { clearTimeout(timer); throw e; });
   }
 
   function transport(request) {
@@ -91,5 +96,5 @@ var AIMode = (function () {
     return out;
   }
 
-  return { get: get, set: set, isAI: isAI, chat: chat, buildRequest: buildRequest, tiredToday: tiredToday };
+  return { get: get, set: set, isAI: isAI, chat: chat, buildRequest: buildRequest, tiredToday: tiredToday, post: post };
 })();

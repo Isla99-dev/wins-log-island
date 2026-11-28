@@ -58,6 +58,7 @@ var Settings = (function () {
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
     renderVoiceExp();
+    renderMemory();
     var nw = $("nextonly-switch");
     nw.setAttribute("aria-checked", nextOnly ? "true" : "false");
     nw.querySelector(".switch-label").textContent = I18n.t(nextOnly ? "settings.on" : "settings.off");
@@ -188,6 +189,17 @@ var Settings = (function () {
       Chat.setExp(+b.dataset.exp);
       location.reload(); // 换实验后刷新页面：每个实验都要从干净的页面开始（尤其是音频会话）
     });
+    // 小助手记得的事：点一次「清空」变成「确定清空？」，3 秒内再点才真的清空
+    var armed = 0;
+    $("memory-clear").addEventListener("click", function () {
+      var b = $("memory-clear");
+      if (!Memory.text()) return;
+      if (!armed) { armed = setTimeout(function () { armed = 0; renderMemory(); }, 3000); b.textContent = I18n.t("memory.confirm"); return; }
+      clearTimeout(armed); armed = 0;
+      Memory.clear();
+      b.textContent = I18n.t("memory.cleared");
+    });
+    document.addEventListener("memory:change", function (e) { if (e.detail.reason !== "clear") renderMemory(); else renderMemoryText(); });
     $("nextonly-switch").addEventListener("click", function () {
       nextOnly = !nextOnly;
       try { localStorage.setItem(NEXT_ONLY_KEY, nextOnly ? "on" : "off"); } catch (e) {}
@@ -235,6 +247,17 @@ var Settings = (function () {
 
   // 从别处（比如「没有记录」的提示）直接打开设置并选备份文件
   function importPrompt() { open(); chooseFile(); }
+
+  function renderMemoryText() {
+    var t = Memory.text(), el = $("memory-text");
+    el.textContent = t || I18n.t("memory.empty");
+    el.classList.toggle("is-empty", !t);
+    $("memory-clear").disabled = !t;
+  }
+  function renderMemory() {
+    renderMemoryText();
+    $("memory-clear").textContent = I18n.t("memory.clear");
+  }
 
   return { init: init, open: open, importPrompt: importPrompt, isDebug: function () { return debugOn; }, nextOnly: function () { return nextOnly; } };
 })();

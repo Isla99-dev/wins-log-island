@@ -60,6 +60,26 @@ export function dropOldWins(reply, recent, text) {
   return reply;
 }
 
+// ---------- 用户摘要（/summary） ----------
+export const SUMMARY_MAX = 200;
+// 兜底：就算模型没守规则，含健康相关词的句子也整句去掉
+const HEALTH = /(失眠|褪黑素|安眠|助眠|睡不好|睡眠|抑郁|焦虑症|躁郁|双相|ADHD|多动|病|药|医生|医院|治疗|诊断|心理咨询|咨询师|自残|自杀|不想活|体重|减肥|经期|怀孕|insomnia|melatonin|sleeping pill|depress|anxiety disorder|adhd|medicat|doctor|therap|diagnos|suicid|self[- ]harm)/i;
+export function cleanSummary(text) {
+  if (typeof text !== "string") return "";
+  const parts = text.replace(/\s+/g, " ").trim().split(/(?<=[。！？；.!?;])/);
+  let out = parts.filter((p) => p.trim() && !HEALTH.test(p)).join("").trim();
+  if (out.length > SUMMARY_MAX) out = out.slice(0, SUMMARY_MAX);
+  return out;
+}
+export function cleanSummaryRequest(body) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.chat)) return null;
+  const chat = body.chat.slice(-40)
+    .map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", text: str(m && m.text, 300) }))
+    .filter((m) => m.text);
+  if (!chat.some((m) => m.role === "user")) return null;
+  return { summary: cleanSummary(body.summary || ""), chat, date: str(body.date, 10), lang: body.lang === "en" ? "en" : "zh" };
+}
+
 // 出错、超时、模型返回的东西没法用时，给用户的兜底回复
 export function fallbackReply(lang) {
   return {

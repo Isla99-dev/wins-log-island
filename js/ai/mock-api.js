@@ -63,5 +63,12 @@ var MockAPI = (function () {
     });
   }
 
-  return { chat: chat };
+  // 假的 /summary：把这次对话里用户说的第一句话补进摘要（只为跑通流程）
+  function summary(body) {
+    var first = (body.chat.filter(function (m) { return m.role === "user"; })[0] || {}).text || "";
+    var add = first ? "最近在聊：" + first.slice(0, 30) + "。" : "";
+    return Promise.resolve({ summary: ((body.summary || "") + add).slice(-200), updated: true });
+  }
+
+  return { chat: chat, summary: summary };
 })();

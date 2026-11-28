@@ -231,6 +231,20 @@ var Store = (function () {
     userMeta: function () {
       return { summary: data.meta.userSummary || "", energy: data.meta.energy || null };
     },
+    // 小助手记得的事（用户摘要，200 字以内）：只存在这台电脑的浏览器里，设置里可以查看和清空
+    setSummary: function (text, day) {
+      data.meta.userSummary = String(text || "").slice(0, 200);
+      if (day) data.meta.summaryDay = day;   // 这一天的对话已经总结过了
+      save();
+    },
+    clearSummary: function () {
+      data.meta.userSummary = "";
+      data.meta.summaryDay = dayKey();      // 清空后今天不再自动写回去
+      save();
+    },
+    summaryDay: function () { return data.meta.summaryDay || null; },
+    // 某一天和小助手的聊天（只读；没有就是空数组）
+    chatOf: function (key) { var d = data.days[key]; return (d && Array.isArray(d.chat)) ? d.chat : []; },
     markBackup: function () {
       data.meta.lastBackupAt = Date.now();
       save();

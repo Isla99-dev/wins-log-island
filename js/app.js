@@ -38,6 +38,7 @@
 
   // ---- 设置：音效、备份 ----
   Settings.init();
+  Memory.init(); // 小助手的记忆：每天第一次对话结束后更新用户摘要
   if (window.ChibiPreview) ChibiPreview.init();
 
   // ---- 历史、本月；没有记录时提示可以从备份导入 ----

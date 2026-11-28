@@ -316,6 +316,7 @@ var Chat = (function () {
         save();
         renderMessage(msg, history.length - 1);
         syncChips();
+        if (AIMode.isAI() && !msg.safety) Memory.touch(); // 3 分钟没新消息 = 今天第一次对话结束，更新摘要
         scrollDown();
         busy = false;
       });

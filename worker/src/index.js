@@ -3,8 +3,8 @@
 // 收到：{ text, wins: [{text, date}], summary, energy: "low"|"mid"|"high"|null, time: "21:30"|null, lang }
 // 返回：{ wins, next_step, smaller_step, steps, reply, safety }（格式见 schema.js）
 // 出错、超时、被限流、模型乱回：都返回一个友好的兜底回复，网页不会崩。
-import { SYSTEM_PROMPT, FORMAT_NOTE } from "./prompt.js";
-import { cleanRequest, validateReply, fallbackReply, dropOldWins } from "./schema.js";
+import { SYSTEM_PROMPT, FORMAT_NOTE, SUMMARY_PROMPT } from "./prompt.js";
+import { cleanRequest, validateReply, fallbackReply, dropOldWins, cleanSummary, cleanSummaryRequest } from "./schema.js";
 import { checkLimit, Limiter } from "./limit.js";
 
 // Durable Object 要从入口文件导出，Cloudflare 才找得到它
@@ -81,12 +81,44 @@ export async function handleChat(request, env, ctx) {
   }
 }
 
+// POST /summary：根据当天的对话更新用户摘要。出任何问题都原样还回旧摘要，不会弄丢。
+// 收到：{ summary: 旧摘要, chat: [{role, text}], date, lang }  返回：{ summary, updated: true|false }
+export async function handleSummary(request, env) {
+  const cors = corsHeaders(request, env);
+  let req = null;
+  try { req = cleanSummaryRequest(await request.json()); } catch (e) { /* 下面统一处理 */ }
+  if (!req) return json({ error: "bad_request" }, 400, cors);
+  const limit = await checkLimit(request.headers.get("CF-Connecting-IP") || "unknown", env);
+  if (!limit.ok) return json({ summary: req.summary, updated: false, limited: limit.scope }, 200, cors);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const user = [
+      `旧摘要：${req.summary || "（还没有）"}`,
+      `${req.date || "今天"}的对话：\n` + req.chat.map((m) => (m.role === "user" ? "用户：" : "小助手：") + m.text).join("\n"),
+      `摘要使用的语言：${req.lang === "en" ? "English" : "中文"}`,
+    ].join("\n\n");
+    const raw = await getProvider(env).chat({ system: SUMMARY_PROMPT, user, env, signal: controller.signal });
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { /* 没返回合法 JSON */ }
+    if (!parsed || typeof parsed.summary !== "string") return json({ summary: req.summary, updated: false }, 200, cors);
+    return json({ summary: cleanSummary(parsed.summary), updated: true }, 200, cors);
+  } catch (e) {
+    console.log("summary error:", e && e.message);
+    return json({ summary: req.summary, updated: false }, 200, cors);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = corsHeaders(request, env);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (url.pathname === "/chat" && request.method === "POST") return handleChat(request, env, ctx);
+    if (url.pathname === "/summary" && request.method === "POST") return handleSummary(request, env);
     if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "wins-log-ai" }, 200, cors);
     return json({ error: "not_found" }, 404, cors);
   },
