@@ -229,8 +229,17 @@ var Store = (function () {
     },
     // 用户摘要、今天的电量（低 / 中 / 高）等给 AI 用的小信息，放在 meta 里；现在只留字段，还没有界面去改
     userMeta: function () {
-      return { summary: data.meta.userSummary || "", energy: data.meta.energy || null };
+      var d = data.days[dayKey()];
+      return { summary: data.meta.userSummary || "", energy: (d && d.energy) || null };
     },
+    // 今天的电量："low" | "mid" | "high"；null = 跳过了。每天问一次（存在当天的记录里）
+    setEnergy: function (level) {
+      var d = getDay();
+      d.energy = ["low", "mid", "high"].indexOf(level) >= 0 ? level : null;
+      d.energyAsked = true;
+      save();
+    },
+    energyAsked: function () { var d = data.days[dayKey()]; return !!(d && d.energyAsked); },
     // 小助手记得的事（用户摘要，200 字以内）：只存在这台电脑的浏览器里，设置里可以查看和清空
     setSummary: function (text, day) {
       data.meta.userSummary = String(text || "").slice(0, 200);

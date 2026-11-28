@@ -252,3 +252,15 @@ body.layout-portrait .i3-page.helper .chat-log { min-height: 90px; }
   text-shadow: 0 2px 0 var(--butter-dark), 2px 0 0 var(--butter-dark), -2px 0 0 var(--butter-dark), 0 -2px 0 var(--butter-dark), 0 4px 0 rgba(27, 33, 51, .45);
 }
 .i3-plus small { display: block; margin-top: 2px; font-size: 14px; color: #fff; text-shadow: 0 1px 0 rgba(27, 33, 51, .8); }
+
+/* 今天的电量：每天第一次打开时的小卡片 */
+.energy-card { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; pointer-events: none; padding: 16px; }
+.energy-card .panel { pointer-events: auto; max-width: 340px; text-align: center; animation: energy-pop 280ms cubic-bezier(.2, 1.4, .4, 1) both; }
+.energy-card b { font-family: var(--font-cute); font-weight: 400; font-size: 20px; }
+.energy-hint { margin: 6px 0 10px; font-size: 13px; color: var(--ink-soft); }
+.energy-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.energy-btns .pixel-btn { min-width: 84px; }
+.energy-btns .pixel-btn.is-on { outline: 2px solid var(--clay); outline-offset: 2px; }
+.energy-skip { margin-top: 10px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--ink-soft); text-decoration: underline; cursor: pointer; }
+@keyframes energy-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .energy-card .panel { animation: none; } }

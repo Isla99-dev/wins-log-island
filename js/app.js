@@ -38,6 +38,7 @@
 
   // ---- 设置：音效、备份 ----
   Settings.init();
+  Energy.init(); // 每天第一次打开：问今天有多少电
   Memory.init(); // 小助手的记忆：每天第一次对话结束后更新用户摘要
   if (window.ChibiPreview) ChibiPreview.init();
 

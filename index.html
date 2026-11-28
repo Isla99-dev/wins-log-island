@@ -101,6 +101,7 @@
     <div class="i3-page helper" data-page="helper" hidden>
       <div class="helper-head">
         <button type="button" class="mode-tag" id="ai-mode"></button>
+        <button type="button" class="mode-tag energy-chip" id="energy-chip"></button>
       </div>
       <div class="chat-log" id="chat-log" aria-live="polite"></div>
       <div class="chips" id="chat-chips">
@@ -141,6 +142,16 @@
   <div class="i3-placing plank" id="i3-placing" hidden><span id="i3-ptext"></span>
     <button class="i3-btn" id="i3-pcancel" type="button" data-i18n="i3.cancel">取消</button></div>
   <div class="i3-bubble" id="i3-bubble" aria-live="polite"></div>
+  <div class="energy-card" id="energy-card" hidden role="dialog" aria-labelledby="energy-title"><div class="panel">
+    <p><b id="energy-title" data-i18n="energy.title">今天有多少电？</b></p>
+    <p class="energy-hint" data-i18n="energy.hint"></p>
+    <div class="energy-btns">
+      <button class="pixel-btn pixel-btn--sun" type="button" data-energy="low"><span aria-hidden="true">🔋</span> <span data-i18n="energy.low">低</span></button>
+      <button class="pixel-btn pixel-btn--sun" type="button" data-energy="mid"><span aria-hidden="true">🔋🔋</span> <span data-i18n="energy.mid">中</span></button>
+      <button class="pixel-btn pixel-btn--sun" type="button" data-energy="high"><span aria-hidden="true">🔋🔋🔋</span> <span data-i18n="energy.high">高</span></button>
+    </div>
+    <p><button class="energy-skip" id="energy-skip" type="button" data-i18n="energy.skip">跳过</button></p>
+  </div></div>
   <div class="i3-tip" id="i3-tip" hidden><div class="panel">
     <p><b data-i18n="i3.tipTitle"></b></p><p data-i18n="i3.tipBody"></p>
     <p><button class="pixel-btn" id="i3-tipok" type="button" data-i18n="i3.tipOk"></button></p>
@@ -347,6 +358,7 @@
 <script src="js/ai/chat.js"></script>
 <script src="js/ui/worldmap.js"></script>
 <script src="js/ui/settings.js"></script>
+<script src="js/ui/energy.js"></script>
 <script src="js/scene/island3d.js"></script>
 <script src="js/app.js"></script>
 </body>
