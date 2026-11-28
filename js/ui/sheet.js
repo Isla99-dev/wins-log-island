@@ -15,6 +15,7 @@ var Sheet = (function () {
   var T = function (k, p) { return I18n.t(k, p); };
   var lastRelease = null; // 最近一次松手的情况（速度、位置、去了哪一档），检查手感用
   var view, panel, state = "peek", vis = 0, H = 0, peekH = 64, halfH = 0, fullH = 0, drag = null, suppress = false, snapTimer = 0;
+  var kb = 0;            // 屏幕键盘挡住的高度（iOS 上从 visualViewport 算出来）
   var MOVE = 6;          // 手指动了多少才算「拖」，不然就是点
   var FLICK = 0.45;      // 甩的速度（像素 / 毫秒）
 
@@ -37,9 +38,43 @@ var Sheet = (function () {
   function visFor(s) { return s === "peek" ? peekH : s === "half" ? halfH : fullH; }
   function setVis(v) {
     vis = v;
-    view.style.setProperty("--sheet-vis", v + "px");
-    view.style.setProperty("--sheet-y", (fullH - v) + "px");
+    // 键盘弹出时：抽屉整体往上抬键盘那么高；露出来的部分不能超过键盘上面剩下的空间
+    var eff = v;
+    if (kb) {
+      var vv = window.visualViewport, room = (vv ? vv.height : window.innerHeight) - 8;
+      eff = Math.max(peekH, Math.min(v, room));
+    }
+    view.style.setProperty("--sheet-vis", eff + "px");
+    view.style.setProperty("--sheet-y", (fullH - eff - kb) + "px");
     view.classList.toggle("sheet-open", v > peekH + 24); // 展开了：收起那一行换成标签栏，控制条让开
+    fitHelper(eff);
+  }
+
+  // 助手页：整页高度 = 抽屉露出来的那部分，聊天记录在中间滚，输入框永远贴在看得见的最底下（半开、全开、键盘弹出都一样）
+  var lastEff = 0;
+  function fitHelper(eff) {
+    if (eff == null) eff = lastEff; else lastEff = eff;
+    var page = panel && panel.querySelector(".i3-page.helper");
+    if (!page) return;
+    if (!portrait() || page.hidden) { page.style.height = ""; return; }
+    var log = $("chat-log"), atBottom = !log || log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+    var top = page.getBoundingClientRect().top - panel.getBoundingClientRect().top; // 页面在抽屉里的位置（不受 transform 影响）
+    var pad = 8 + safeBottomCached;
+    page.style.height = Math.max(0, Math.round(eff - top - pad)) + "px";
+    if (log && atBottom) log.scrollTop = log.scrollHeight; // 本来在看最新一条：高度变了也停在最新一条
+  }
+  var safeBottomCached = 0;
+
+  // iOS：键盘弹出时页面不会变矮，只有 visualViewport 变矮；按它算出键盘挡住了多少
+  function onViewport() {
+    if (!portrait()) { if (kb) { kb = 0; setVis(vis); } return; }
+    var vv = window.visualViewport; if (!vv) return;
+    var k = Math.round(window.innerHeight - vv.height - vv.offsetTop);
+    k = k > 80 ? k : 0;                       // 小于 80 像素的变化是地址栏伸缩，不是键盘
+    if (k === kb) return;
+    kb = k;
+    view.classList.toggle("kb-open", kb > 0);
+    setVis(vis);
   }
   function go(s, animate) {
     state = s;
@@ -138,7 +173,7 @@ var Sheet = (function () {
     });
     $("i3-peek-more").addEventListener("click", function () { go("half", true); });
     document.addEventListener("sheet:collapse", function () { if (portrait()) go("peek", true); });
-    document.addEventListener("island:page", function () { ensure("half"); });   // 从别处跳到某一页（比如历史）：抽屉要打开
+    document.addEventListener("island:page", function () { ensure("half"); setTimeout(function () { fitHelper(); }, 0); });   // 从别处跳到某一页（比如历史）：抽屉要打开
     document.addEventListener("wins:ask", function () { ensure("half"); });
     document.addEventListener("wins:change", renderPeek);
     panel.addEventListener("focusin", function (e) { if (portrait() && /INPUT|TEXTAREA/.test(e.target.tagName)) ensure("full"); }); // 打字时拉到最高，别被键盘挡住
@@ -146,9 +181,18 @@ var Sheet = (function () {
     document.addEventListener("layout:change", function () { setTimeout(relayout, 0); });
     window.addEventListener("resize", relayout);
     measure(); renderPeek();
+    safeBottomCached = safeBottom();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", onViewport);
+      window.visualViewport.addEventListener("scroll", onViewport);
+    }
+    // 切到助手页 / 离开助手页（标签点击不发事件，看 hidden 属性的变化）：重新量一下
+    var hp = panel.querySelector(".i3-page.helper");
+    if (hp && window.MutationObserver) new MutationObserver(function () { fitHelper(); var log = $("chat-log"); if (log && !hp.hidden) log.scrollTop = log.scrollHeight; }).observe(hp, { attributes: true, attributeFilter: ["hidden"] });
+    view.addEventListener("transitionend", function () { fitHelper(); }); // 收起那一行折叠完，页面位置会变
     var q = /sheet=(peek|half|full)/.exec(location.hash); // 网址加 #sheet=half 直接看某一档（截图检查用）
     go(q ? q[1] : "peek", false);
   }
 
-  return { init: init, last: function () { return lastRelease; }, go: function (s) { go(s, true); }, state: function () { return state; }, renderPeek: renderPeek };
+  return { init: init, last: function () { return lastRelease; }, go: function (s) { go(s, true); }, state: function () { return state; }, renderPeek: renderPeek, fit: function () { fitHelper(); }, keyboard: function (px) { kb = px || 0; view.classList.toggle("kb-open", kb > 0); setVis(vis); } };
 })();

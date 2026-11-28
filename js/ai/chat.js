@@ -585,14 +585,22 @@ var Chat = (function () {
     input = $("chat-input");
     history = Store.getChat();
     if (Onboarding.begin()) {
-      // 全新用户：开场白换成一个问题，回答马上变成第一个 Win
-      history.push({ role: "assistant", onboard: true, text: I18n.t("onboard.ask"), t: Date.now() });
-      save();
+      // 全新用户：开场白换成一个问题，回答马上变成第一个 Win（还没回答就刷新了：不重复问）
+      var lastMsg = history[history.length - 1];
+      if (!lastMsg || !lastMsg.onboard) {
+        history.push({ role: "assistant", onboard: true, text: I18n.t("onboard.ask"), t: Date.now() });
+        save();
+      }
     } else if (!history.length) {
       history.push({ role: "assistant", greeting: true, text: I18n.t("chat.greeting"), t: Date.now() });
       save();
     }
     renderAll();
+
+    // 聊天记录自动停在最新一条：只要你没往上翻，回复变长、卡片展开、划线动画都会跟着滚到底
+    var stick = true;
+    log.addEventListener("scroll", function () { stick = log.scrollHeight - log.scrollTop - log.clientHeight < 40; });
+    if (window.MutationObserver) new MutationObserver(function () { if (stick) scrollDown(); }).observe(log, { childList: true, subtree: true, characterData: true });
 
     // 练习模式 ⇄ AI 模式（现在 AI 模式用的是写死的示例，不联网）
     var modeBtn = $("ai-mode");

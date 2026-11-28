@@ -168,7 +168,15 @@ body.layout-portrait .view-island.sheet-open .i3-peek { height: 0; opacity: 0; p
 body.layout-portrait .i3-tabs { margin-top: 2px; }
 body.layout-portrait .i3-tab { font-size: 13px; padding: 3px 2px 5px; }
 body.layout-portrait .i3-page { font-size: 15px; }
-body.layout-portrait .i3-page.helper .chat-log { min-height: 90px; }
+/* 助手页（竖屏）：高度由 js/ui/sheet.js 设成抽屉露出来的那部分；聊天记录占满中间、自己滚，输入框贴在最底下 */
+body.layout-portrait .i3-page.helper { display: flex; flex-direction: column; overflow: hidden; flex: none; }
+body.layout-portrait .i3-page.helper[hidden] { display: none; }
+body.layout-portrait .i3-page.helper > * { flex: none; }
+body.layout-portrait .i3-page.helper .chat-log { flex: 1 1 auto; min-height: 48px; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+body.layout-portrait .i3-page.helper .helper-head .mode-tag { margin-bottom: 6px; }
+body.layout-portrait .i3-page.helper #chat-hint { margin: 4px 0 0; font-size: 12px; }
+body.layout-portrait .view-island.kb-open .i3-page.helper #chat-hint,
+body.layout-portrait .view-island.kb-open .i3-page.helper #chat-chips { display: none; } /* 键盘弹出时：省出空间给聊天记录 */
 /* 点「下一件」开始一件事：任务闪一下 */
 .todo li.is-focus { animation: focus-flash 1.8s ease-out; }
 @keyframes focus-flash { 0%, 40% { background: rgba(227, 194, 126, .7); } 100% { background: transparent; } }
