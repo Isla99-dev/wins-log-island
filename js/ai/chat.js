@@ -5,7 +5,7 @@
  *     想做的事 → 「种到田里」加进今日任务
  *     做完的事 → 「全部划掉」记为已完成
  * - 今天的聊天记录存在浏览器里
- * 助手怎么回答由 js/ai.js 决定，这里只管界面。
+ * 助手怎么回答由 js/ai/ai.js 决定，这里只管界面。
  */
 var Chat = (function () {
   var $ = function (id) { return document.getElementById(id); };

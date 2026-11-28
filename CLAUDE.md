@@ -17,7 +17,7 @@ Wins Log 小岛
   - 板面：背景 `#efe0c8` / `#e6d3b6` 横条纹（`--parchment` / `--parchment-deep`），边框 `#b9997a`（`--wood-dark`），文字 `#4a3a2e`（`--ink`），输入框和卡片 `#f8efdf`（`--paper`）。
   - 按钮用低饱和四色：陶土 `#b8735c`（强调、选中的标签、「结束今天」）、灰绿 `#7a9a66`（确认、「种下」、选中的区域按钮）、灰蓝 `#5e6882`（次要按钮）、奶油黄 `#e3c27e`（数量标签、快捷短语、商店的「买」）。每种颜色有一个更深的同色系边框色（`--clay-dark` 等）。
   - 小票、世界地图的画面本身是插画，不受这套颜色约束，只有外框跟着。
-  - 材质：全部 `MeshToonMaterial` + 3 档渐变贴图（暗 / 中 / 亮，NearestFilter，最亮一档压在 238）。Kenney / Quaternius 的 CC0 模型也换成这套材质，颜色按 `js/island3d.js` 里的 `PAL` 和 `SEASONS` 重映射。
+  - 材质：全部 `MeshToonMaterial` + 3 档渐变贴图（暗 / 中 / 亮，NearestFilter，最亮一档压在 238）。Kenney / Quaternius 的 CC0 模型也换成这套材质，颜色按 `js/scene/island3d.js` 里的 `PAL` 和 `SEASONS` 重映射。
   - 轮廓线：EdgesGeometry，颜色 #1b2133、不透明度约 0.7；方块、圆柱、拉伸体、模型都加，圆形的树冠、小人、猫不加。
   - 颜色：不做色调映射（NoToneMapping），用饱和明快的配色：草地 #86b86a、泥土 #8b6a4e、底座 #4f5566、墙 #f1e8d8、屋顶 #41607f、木头 #8a5a34、水 #4f8fc0、树叶 #6fae5c / #82c06c、强调色 #e0795a。
   - 灯光：夜晚天空深蓝，但岛要看得清（环境光不低于 0.5）；灯只是点缀，点光源不超过 6 个、照亮范围小，绝不能把地面打成一片白。泛光只给发光物体（阈值 0.95），白天没有光晕。小灯泡用 InstancedMesh。
@@ -52,17 +52,25 @@ Wins Log 小岛
 - 先做成能在浏览器里直接打开的网页（双击 `index.html` 就能用，不需要安装或启动服务器）。
 - 数据存在浏览器里（localStorage）。3D 小岛的金币、买的东西、每棵树的位置存在同一份数据的 `island` 里（`Store.island()`、`Store.coins()`）；3D 原型 `Desktop/index.html` 的存档（`winsIsland3d.v2`）会自动导入一次。
 - 3D 用 three.js r128 的非 module 版本，放在 `lib/`（MIT，许可文件 `lib/LICENSE-three.txt`）。不要升级到只有 ES module 的新版本。
-- 3D 模型（Kenney CC0）以 base64 打包在 `js/models.js` 里（双击打开时浏览器不让读 .glb 文件），许可在 `models/LICENSE-kenney.txt`。要加新模型：重新生成 `js/models.js`，不要手改。
+- 3D 模型（Kenney CC0）以 base64 打包在 `js/scene/models.js` 里（双击打开时浏览器不让读 .glb 文件），许可在 `models/LICENSE-kenney.txt`。要加新模型：重新生成 `js/scene/models.js`，不要手改。
 - 小岛网址后面加 `#area=forest`、`#time=22` 可以直接看某个区域 / 时间，截图检查用。
-- **版面**（`js/layout.js`，在 `<body>` 上加 `layout-portrait` / `layout-landscape`，设置里可以自动 / 锁定横屏 / 锁定竖屏，偏好存在 `winslog-layout`）：
+- **版面**（`js/ui/layout.js`，在 `<body>` 上加 `layout-portrait` / `layout-landscape`，设置里可以自动 / 锁定横屏 / 锁定竖屏，偏好存在 `winslog-layout`）：
   - 横屏和电脑：小岛全屏，任务、商店、本月、历史、助手在右边的侧边栏。
-  - 手机竖屏：小岛占满整个屏幕（不缩放），任务等收进底部抽屉（`js/sheet.js`），三档：收起（默认，一行约 60px：左边「下一件」小事、右边说话按钮和「更多」）、半开（半屏任务列表）、全开（顶到顶栏下）。可以上下拖（跟手，松手吸附到最近一档，动画 260ms，快甩按方向走一档），也可以点把手轮流切换。收起时点「下一件」会发出 `companion:start` 事件（陪伴模式第 2 期接上）。
+  - 手机竖屏：小岛占满整个屏幕（不缩放），任务等收进底部抽屉（`js/ui/sheet.js`），三档：收起（默认，一行约 60px：左边「下一件」小事、右边说话按钮和「更多」）、半开（半屏任务列表）、全开（顶到顶栏下）。可以上下拖（跟手，松手吸附到最近一档，动画 260ms，快甩按方向走一档），也可以点把手轮流切换。收起时点「下一件」会发出 `companion:start` 事件（陪伴模式第 2 期接上）。
   - 手机浏览器没办法真正锁住屏幕方向，所以「锁定」固定的是版面。
-- **语音输入**（`js/chat.js`）：iPhone 上的 Chrome 用 WebKit 内核，语音识别很娇气，改动时要守住这几条：每次点按都新建 `SpeechRecognition` 实例、结束就丢掉（不复用）；`start()` 必须在点按的事件里同步调用（前面不能有 await / setTimeout，别从定时器里去点麦克风按钮）；正在启动 / 识别 / 收尾时不能再 `start()`；开始前 `Sound.hold()` 关掉页面的音效（正在用的 AudioContext 会让下一次识别失败），结束后 `Sound.release()`；以后加背景声也要接在这两个函数上；每一步（start / onstart / onresult / onerror / onend）写在助手页的小状态框里；连续失败 2 次换成「用输入法语音」的提示。说完话时助手还在回复，文字留在输入框，不能丢。麦克风按钮只绑 `click`，两个 🎙（聊天面板、抽屉）都走 `Chat.listen(来源, 事件)` 这一个入口：500ms 点按防抖，`start()` 后 1 秒内忽略停止请求；每个 `start()` / `stop()` / `abort()` 在日志里写来源标签；点下去的同一刻按钮就变「准备中…」，`onstart` 后变红「正在听…」（iPhone 上 `onstart` 要等半秒，没反馈会让人再点一下、被当成停止）；`onerror` 和 `onend` 都要重置状态、把实例设为 null。语音状态日志只在设置里打开「调试模式」（`winslog-debug`）时显示。
-  - **语音实验**（设置 →「调试模式」→「语音实验」，存在 `winslog-voice-exp`，换一个会刷新页面）：iPhone 上第 2 次起 `onstart` 正常但一次 `onresult` 都没有（麦克风没收到声音），原因还没确定，一个一个试：0 基准（每次新建实例）；A0 页面完全不发声（`Sound.setMode("silent")`，不创建任何 AudioContext，排查用）；A 识别期间和结束后 1 秒不发声、音效放完 `suspend()`（`soft`，默认）。页面里只有 `js/sound.js` 会发声，没有 `<audio>`、背景音和 `speechSynthesis`。所有实验共用：`onstart` 后 4 秒没有 `onresult` 就自动停止、提示「语音没听到……」、焦点放进输入框；两个 🎙 共用同一套逻辑和状态。找到有效的做法后，把它设为默认并删掉没用的实验。这些在真 iPhone 上还没验证过。
+- **语音输入**（`js/ai/chat.js`）：iPhone 上的 Chrome 用 WebKit 内核，语音识别很娇气，改动时要守住这几条：每次点按都新建 `SpeechRecognition` 实例、结束就丢掉（不复用）；`start()` 必须在点按的事件里同步调用（前面不能有 await / setTimeout，别从定时器里去点麦克风按钮）；正在启动 / 识别 / 收尾时不能再 `start()`；开始前 `Sound.hold()` 关掉页面的音效（正在用的 AudioContext 会让下一次识别失败），结束后 `Sound.release()`；以后加背景声也要接在这两个函数上；每一步（start / onstart / onresult / onerror / onend）写在助手页的小状态框里；连续失败 2 次换成「用输入法语音」的提示。说完话时助手还在回复，文字留在输入框，不能丢。麦克风按钮只绑 `click`，两个 🎙（聊天面板、抽屉）都走 `Chat.listen(来源, 事件)` 这一个入口：500ms 点按防抖，`start()` 后 1 秒内忽略停止请求；每个 `start()` / `stop()` / `abort()` 在日志里写来源标签；点下去的同一刻按钮就变「准备中…」，`onstart` 后变红「正在听…」（iPhone 上 `onstart` 要等半秒，没反馈会让人再点一下、被当成停止）；`onerror` 和 `onend` 都要重置状态、把实例设为 null。语音状态日志只在设置里打开「调试模式」（`winslog-debug`）时显示。
+  - **语音实验**（设置 →「调试模式」→「语音实验」，存在 `winslog-voice-exp`，换一个会刷新页面）：iPhone 上第 2 次起 `onstart` 正常但一次 `onresult` 都没有（麦克风没收到声音），原因还没确定，一个一个试：0 基准（每次新建实例）；A0 页面完全不发声（`Sound.setMode("silent")`，不创建任何 AudioContext，排查用）；A 识别期间和结束后 1 秒不发声、音效放完 `suspend()`（`soft`，默认）。页面里只有 `js/ui/sound.js` 会发声，没有 `<audio>`、背景音和 `speechSynthesis`。所有实验共用：`onstart` 后 4 秒没有 `onresult` 就自动停止、提示「语音没听到……」、焦点放进输入框；两个 🎙 共用同一套逻辑和状态。找到有效的做法后，把它设为默认并删掉没用的实验。这些在真 iPhone 上还没验证过。
 - 小岛网址后面加 `#sheet=peek|half|full` 可以直接看抽屉的某一档（竖屏版面）。
 - 小岛网址后面加 `#page=history`、`#page=month`、`#page=shop`、`#page=helper`、`#day=2026-11-26` 可以直接打开右边面板的某一页 / 某一天的历史；加 `#view=map`、`#modal=settings`、`#modal=printer` 可以直接看世界地图 / 设置 / 小票，截图检查用。
-- **Wins 永久保存**：按日期存在 `winslog-island-v1` 里，任何时候都不自动删除。导入备份前会自动把现在的整份另存到 `winslog-island-v1.before-import`；读不出来的旧数据会原样留在 `winslog-island-v1.unreadable-<时间>`，不会被新的空记录盖掉。「今日任务」「今天的 Wins」只显示当天，要看以前的去「历史」页（`js/history.js`，只读）。
+- **代码目录**（`js/` 下按职责分四个文件夹，页面里仍是普通 `<script src>`，加载顺序见 `index.html`）：
+  - `js/scene/`：3D 场景和角色（`island3d.js` 小岛、`chibi.js` / `chibi-preview.js` 小人、`characters.js` 小猫等立牌、`models.js` 打包的模型）。
+  - `js/ui/`：界面（`i18n.js` 文字、`layout.js` / `sheet.js` 版面和抽屉、`tasks.js` / `history.js` / `receipt.js` / `worldmap.js` / `settings.js` 各面板、`sound.js` 音效）。
+  - `js/data/`：存档（`store.js`，唯一读写 localStorage 里 Wins / 任务 / 小岛数据的地方）。
+  - `js/ai/`：小助手（`ai.js` 回答、`chat.js` 聊天面板和语音输入）。
+  - `js/app.js`：入口，把上面几块接起来。
+  - 新文件放进对应文件夹；角色相关代码（`js/scene/chibi*.js`、`characters.js`）只搬过位置，内容没改。
+- **存档版本和升级**（`js/data/store.js`）：存档里有 `version`（现在是 2），`Store.SCHEMA` 是代码认识的最新版。打开网页时如果存档比它旧，先把整份原样另存到 `winslog-island-v1.before-migrate-v<旧版本>`，再按 `MIGRATIONS` 一版一版升级（只整理补全，不删记录）；存档比代码还新则原样保留、不降级。导入旧备份时也会升到最新格式。以后改存档格式：`SCHEMA` 加 1，在 `MIGRATIONS` 里加一个升级函数。
+- **Wins 永久保存**：按日期存在 `winslog-island-v1` 里，任何时候都不自动删除。导入备份前会自动把现在的整份另存到 `winslog-island-v1.before-import`；读不出来的旧数据会原样留在 `winslog-island-v1.unreadable-<时间>`，不会被新的空记录盖掉。「今日任务」「今天的 Wins」只显示当天，要看以前的去「历史」页（`js/ui/history.js`，只读）。
 - AI 功能先用模拟回复占位，以后再接入真正的 AI 接口。
 - **API 密钥绝不能写进网页文件**。以后接入真 AI 时，通过一个本地小后端或代理转发请求，由它保管密钥。
 
@@ -78,11 +86,11 @@ Wins Log 小岛
 - 一步一步做，每完成一步先让我确认，再做下一步。
 - 不使用 ES module（`<script type="module">`），因为双击打开（file://）时它会被浏览器拦截；用普通 `<script src>` 拆分文件即可。
 - 不依赖构建工具（npm / 打包器），也不加载任何外部资源。字体是本地文件，放在 `fonts/`（Pixelify Sans、ZCOOL KuaiLe，都是 OFL 许可，许可文件一起保留），在 `css/fonts.css` 里引用。
-- AI 相关代码集中在一个文件里（如 `js/ai.js`），对外只暴露一个统一接口，方便以后把模拟回复换成真实接口。
+- AI 相关代码集中在一个文件里（如 `js/ai/ai.js`），对外只暴露一个统一接口，方便以后把模拟回复换成真实接口。
 - 版本管理用 git。每完成一步提交一次，提交说明用中文写清楚这一步做了什么。
 - 每一步在自己的分支上做（如 `step-1-skeleton`），我确认后再合并回 `main`。
 - 我说「回到上一版」时：先告诉我会回到哪一次提交、会撤掉什么，然后用 `git revert` 撤销最近一次提交（保留历史，随时能再找回来），不用 `git reset --hard`。还没提交的改动要先问我是否丢弃。
-- 双语：界面上所有文字都写在 `js/i18n.js` 的中英文字典里，用 `I18n.t("key")` 取，不要在其他文件里直接写死界面文字。新加功能时中英文都要写。用户自己写的任务和聊天内容不翻译。例外：模拟助手的关键词和回复模板放在 `js/ai.js` 的 ZH / EN 两套 PACKS 里，它用用户这句话的语言回答。
+- 双语：界面上所有文字都写在 `js/ui/i18n.js` 的中英文字典里，用 `I18n.t("key")` 取，不要在其他文件里直接写死界面文字。新加功能时中英文都要写。用户自己写的任务和聊天内容不翻译。例外：模拟助手的关键词和回复模板放在 `js/ai/ai.js` 的 ZH / EN 两套 PACKS 里，它用用户这句话的语言回答。
 - 旧版的单文件原型 `wins-log.html` 保留作参考，不再修改。已有数据存在 localStorage 的 `wins-log-v1` 键下，新版应能导入它。
 - 改 3D 小岛时：每改完一轮，在本地浏览器打开截图给我看，再提交 git。截图放在 `screenshots-3d/`（不进 git）。
 - AI 助手的文案是鼓励和陪伴，不做诊断；遇到明显的情绪危机表达时，温和地建议寻求专业帮助。

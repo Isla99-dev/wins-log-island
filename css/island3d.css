@@ -107,10 +107,10 @@ body.on-island .footnote { display: none; }
 .i3-tip p { margin: 8px 0; }
 .i3-tip b { font-family: var(--font-cute); font-weight: 400; font-size: 20px; }
 
-/* ================= 版面（js/layout.js 在 <body> 上加 layout-portrait / layout-landscape） ================= */
+/* ================= 版面（js/ui/layout.js 在 <body> 上加 layout-portrait / layout-landscape） ================= */
 .tab-ico { margin-right: 4px; }
 
-/* ---------- 竖屏版面：小岛占满屏幕，任务和助手收在底部抽屉里（js/sheet.js） ---------- */
+/* ---------- 竖屏版面：小岛占满屏幕，任务和助手收在底部抽屉里（js/ui/sheet.js） ---------- */
 .i3-sheet-head { display: none; }
 body.layout-portrait.on-island .topbar { top: calc(6px + env(safe-area-inset-top, 0px)); left: 8px; right: 8px; gap: 6px; flex-wrap: nowrap; }
 body.layout-portrait.on-island .date-sign { display: none; }

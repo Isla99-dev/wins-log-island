@@ -1,4 +1,4 @@
-js/models.js 里的模型来自 Kenney（www.kenney.nl）的三个模型包，都是 CC0 许可（公共领域，可以随意使用）。
+js/scene/models.js 里的模型来自 Kenney（www.kenney.nl）的三个模型包，都是 CC0 许可（公共领域，可以随意使用）。
 
 ===== nature-kit =====
 	

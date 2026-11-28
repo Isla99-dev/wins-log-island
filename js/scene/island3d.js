@@ -812,7 +812,7 @@ var Island = (function () {
     Store.save();
 
     /* ================= 2D 插画立牌：小人和黑猫（始终面向镜头） ================= */
-    // 图从 js/characters.js 来（代码画的临时版本，或者你自己画的 PNG）
+    // 图从 js/scene/characters.js 来（代码画的临时版本，或者你自己画的 PNG）
     const texOf = new Map();
     function tex(img) { let t = texOf.get(img); if (!t) { t = new THREE.Texture(img); t.needsUpdate = true; t.anisotropy = 4; texOf.set(img, t); } return t; }
     const planeG = cached("billboard", () => { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, .5, 0); return g; });
@@ -840,7 +840,7 @@ var Island = (function () {
     // 状态：stand 站立 / walk 走路 / happy 开心 / sit 坐着 / work 干活；猫：walk / sit / stretch / rub
     function act(b, state, ms, then) { b.state = state; b.until = ms ? performance.now() + ms : 0; b.after = then || null; }
     function faceTo(b, dx, dz) { const s = dx * Math.cos(theta) - dz * Math.sin(theta); if (Math.abs(s) > .12) b.face = s < 0 ? -1 : 1; } // 朝屏幕左边走就翻转
-    // 小人：日系 Q 版人偶（js/chibi.js）：3D 身体 + 手绘脸贴图
+    // 小人：日系 Q 版人偶（js/scene/chibi.js）：3D 身体 + 手绘脸贴图
     function makePerson() {
       const av = Chibi.create({ glasses: true });
       const g = av.root; g.scale.setScalar(1.15); scene.add(g);
@@ -1119,7 +1119,7 @@ var Island = (function () {
           '<p class="i3-note">' + esc(T("i3.shopNote")) + "</p>";
         $("i3-shop").querySelectorAll("[data-buy]").forEach(x => x.onclick = () => startPlacing(SHOP.find(s => s.id === x.dataset.buy)));
       } else if (page === "month") {
-        History.renderMonth($("i3-month")); // 本月：用历史数据（js/history.js）
+        History.renderMonth($("i3-month")); // 本月：用历史数据（js/ui/history.js）
       } else if (page === "history") {
         History.renderCalendar($("i3-history")); // 历史：月历 + 某一天的完整清单
       }
