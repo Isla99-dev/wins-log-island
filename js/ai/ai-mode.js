@@ -63,9 +63,23 @@ var AIMode = (function () {
     var last = messages.length ? messages[messages.length - 1].text : "";
     var req = buildRequest(last, context && context.lang || "zh");
     return transport(req)
-      .then(function (raw) { return AISchema.dropOldWins(AISchema.validate(raw), req.wins, req.text) || AISchema.fallback(); }, function () { return AISchema.fallback(); })
+      .then(function (raw) {
+        // 被限流：global = 全站今天的额度用完了 → 自动退回练习模式；ip = 这个人发得太快 / 今天太多
+        if (raw && raw.limited === "global") return tired();
+        if (raw && raw.limited === "ip") return { wins: [], steps: [], next_step: null, smaller_step: null, reply: I18n.t("ai.tooFast"), safety: false, fallback: true };
+        return AISchema.dropOldWins(AISchema.validate(raw), req.wins, req.text) || AISchema.fallback();
+      }, function () { return AISchema.fallback(); })
       .then(toReply);
   }
+
+  // 全站额度用完：今天改用练习模式，记下日期（明天可以再回 AI 模式）
+  var TIRED_KEY = "winslog-ai-tired";
+  function tired() {
+    try { localStorage.setItem(TIRED_KEY, Store.dayKey()); } catch (e) {}
+    set("practice");
+    return { wins: [], steps: [], next_step: null, smaller_step: null, reply: I18n.t("ai.tired"), safety: false, fallback: true, limited: "global" };
+  }
+  function tiredToday() { try { return localStorage.getItem(TIRED_KEY) === Store.dayKey(); } catch (e) { return false; } }
 
   function toReply(r) {
     if (r.safety) return { reply: "", safety: true, plan: null };
@@ -77,5 +91,5 @@ var AIMode = (function () {
     return out;
   }
 
-  return { get: get, set: set, isAI: isAI, chat: chat, buildRequest: buildRequest };
+  return { get: get, set: set, isAI: isAI, chat: chat, buildRequest: buildRequest, tiredToday: tiredToday };
 })();

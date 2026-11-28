@@ -9,8 +9,20 @@ ALLOWED_ORIGINS = "https://isla99-dev.github.io,http://localhost:8767,http://127
 # 用哪家模型。现在只写了 deepseek，以后加别的在 src/providers/ 里新增一个文件
 PROVIDER = "deepseek"
 MODEL = "deepseek-chat"
+# ---- 防止被刷（改完要重新 npx wrangler deploy，见 README「修改上限」）----
 # 每个访问者（按 IP）每分钟最多几次 / 每天最多几次
-RATE_PER_MINUTE = "6"
-RATE_PER_DAY = "100"
+RATE_PER_MINUTE = "5"
+RATE_PER_DAY = "50"
+# 全站每天最多调用几次 AI（所有人加起来）。超过后网页自动退回练习模式，提示「小助手今天累了，明天再来」
+DAILY_TOTAL_LIMIT = "300"
 
 # ⚠️ 密钥（DEEPSEEK_API_KEY）不写在这个文件里！用命令设置：npx wrangler secret put DEEPSEEK_API_KEY
+
+# 计数器（Durable Object）：所有机器共用一份计数，限流才准。免费账号可用。
+[[durable_objects.bindings]]
+name = "LIMITER"
+class_name = "Limiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Limiter"]

@@ -5,7 +5,10 @@
 // 出错、超时、被限流、模型乱回：都返回一个友好的兜底回复，网页不会崩。
 import { SYSTEM_PROMPT, FORMAT_NOTE } from "./prompt.js";
 import { cleanRequest, validateReply, fallbackReply, dropOldWins } from "./schema.js";
-import { checkLimit } from "./limit.js";
+import { checkLimit, Limiter } from "./limit.js";
+
+// Durable Object 要从入口文件导出，Cloudflare 才找得到它
+export { Limiter };
 import { getProvider } from "./providers/index.js";
 
 const TIMEOUT_MS = 12000;
@@ -46,9 +49,14 @@ export async function handleChat(request, env, ctx) {
   if (!req) return json({ error: "bad_request" }, 400, cors);
 
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  const limit = checkLimit(ip, env);
+  const limit = await checkLimit(ip, env);
   if (!limit.ok) {
-    return json({ ...fallbackReply(req.lang), reply: req.lang === "en" ? "That's a lot of messages in a short time. Take a breath and try again in a bit." : "说得有点快啦，先喘口气，过一会儿再来找我。", limited: true }, 200, { ...cors, "Retry-After": String(limit.retryAfter) });
+    // scope "global"：全站今天的额度用完了，网页会自动退回练习模式；"ip"：这个人发得太快 / 今天太多
+    const en = req.lang === "en";
+    const reply = limit.scope === "global"
+      ? (en ? "The little helper is tired today. Come back tomorrow." : "小助手今天累了，明天再来。")
+      : (en ? "That's a lot of messages for now. Take a breath and try again in a bit." : "说得有点快啦，先喘口气，过一会儿再来找我。");
+    return json({ ...fallbackReply(req.lang), reply, limited: limit.scope }, 200, { ...cors, "Retry-After": String(limit.retryAfter) });
   }
 
   const controller = new AbortController();

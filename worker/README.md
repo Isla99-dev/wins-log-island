@@ -79,10 +79,28 @@ curl -X POST "https://wins-log-ai.你的名字.workers.dev/chat" -H "Content-Typ
 | `src/index.js` | 入口：`POST /chat`，检查请求、限流、调用模型、校验结果、出错时给兜底回复 |
 | `src/providers/deepseek.js` | 调用 DeepSeek 的那一层。以后换模型：照它写一个新文件，在 `providers/index.js` 登记，`wrangler.toml` 里改 `PROVIDER` |
 | `src/schema.js` | AI 返回格式的校验（和网页里 `js/ai/schema.js` 是同一份约定）、兜底回复 |
-| `src/limit.js` | 限流：每个访问者每分钟 6 次、每天 100 次（可在 `wrangler.toml` 改） |
+| `src/limit.js` | 防止被刷：按 IP 限流 + 全站每日总上限，计数放在 Durable Object 里（见下面「修改上限」） |
 | `src/prompt.js` | 提示词的位置（现在留空） |
 
-**限流说明**：现在的限流存在 Worker 的内存里，是「挡住手滑和小滥用」的第一道门。想更严格，可以在 Cloudflare 后台这个 Worker 的 Security / Rules 里加 Rate limiting 规则。
+## 修改上限（防止被刷）
+Worker 地址是公开的，所以有两道上限，都在 `worker/wrangler.toml` 的 `[vars]` 里：
+
+| 名字 | 默认 | 意思 | 超出后 |
+| --- | --- | --- | --- |
+| `RATE_PER_MINUTE` | `"5"` | 同一个 IP 每分钟最多问几次 | 回复「说得有点快啦……」，过一会儿就好 |
+| `RATE_PER_DAY` | `"50"` | 同一个 IP 每天最多问几次 | 同上，第二天恢复 |
+| `DAILY_TOTAL_LIMIT` | `"300"` | 全站所有人加起来，每天最多问几次 | 回复「小助手今天累了，明天再来」，网页自动切回练习模式 |
+
+改法：
+1. 用文本编辑器打开 `worker/wrangler.toml`，改引号里的数字，比如 `DAILY_TOTAL_LIMIT = "500"`。数字要留在引号里。
+2. 保存，然后在 `worker` 文件夹里执行 `npx wrangler deploy`，几秒后生效。
+
+说明：
+- 「每天」按 UTC 零点重置：北京时间早上 8 点，英国冬令时午夜（夏令时凌晨 1 点）。
+- 计数放在 Cloudflare 的 Durable Object（名字叫 `Limiter`）里，全世界的 Cloudflare 机器共用一份，不会因为换机器、重启就清零。免费账号可以用，第一次部署时会自动创建。
+- IP 不原样保存，只存一段打乱后的摘要；旧的计数每天自动清掉。
+- 估算费用：DeepSeek 每次对话大约几分钱人民币以内，每天 300 次也只是几块钱。想更省就把 `DAILY_TOTAL_LIMIT` 调小。
+
 **费用说明**：Cloudflare Workers 免费额度每天 10 万次请求，对个人使用绰绰有余；DeepSeek 按字数计费。
 
 ## 返回格式
