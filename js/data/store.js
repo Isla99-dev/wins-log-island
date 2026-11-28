@@ -227,6 +227,10 @@ var Store = (function () {
       data.meta.importedV1 = true; // 导入后不再从旧版原型重复导入
       save();
     },
+    // 用户摘要、今天的电量（低 / 中 / 高）等给 AI 用的小信息，放在 meta 里；现在只留字段，还没有界面去改
+    userMeta: function () {
+      return { summary: data.meta.userSummary || "", energy: data.meta.energy || null };
+    },
     markBackup: function () {
       data.meta.lastBackupAt = Date.now();
       save();

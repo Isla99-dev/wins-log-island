@@ -5,7 +5,7 @@
  *   cat_：walk1~walk3 走路、sit 坐着、stretch 伸懒腰、rub 蹭小人
  *
  * 换成自己画的图（PNG，透明背景）：
- *   1. 网站（GitHub Pages）：把 cat_sit.png 这样命名的图放进 assets/characters/，推送即可。
+ *   1. 网站（GitHub Pages）：把 cat_sit.png 这样命名的图放进 assets/characters/，把下面的 USE_FOLDER_IMAGES 改成 true，推送即可。
  *   2. 双击打开的本地版：浏览器不让 3D 直接读文件夹里的图，请在 ⚙ 设置 →「角色图片」里导入，
  *      导入的图存在这台电脑的浏览器里。
  *   没提供的状态会继续用下面这些代码画的临时版本。
@@ -17,6 +17,9 @@ var Characters = (function () {
   };
   var SIZE = { cat: [320, 256] };
   var KEY = "winslog-characters";
+  // assets/characters/ 里放了猫的 PNG 之后，把这里改成 true 才会去读（现在文件夹是空的，
+  // 不读就不会在控制台里报 404）。设置里导入的图不受这个开关影响。
+  var USE_FOLDER_IMAGES = false;
   var INK = "#2a2630", CAT_INK = "#0d0c12";
 
   /* ---------------- 画图小工具 ---------------- */
@@ -134,7 +137,7 @@ var Characters = (function () {
     Object.keys(NAMES).forEach(function (k) { NAMES[k].forEach(function (n) { out[k][n] = drawCat(n); out[k][n].custom = false; }); });
     var saved = stored(), jobs = [];
     // 文件夹里的图：先看第一张在不在、能不能用，在的话再读这个角色的其他状态
-    Object.keys(NAMES).forEach(function (k) {
+    if (USE_FOLDER_IMAGES) Object.keys(NAMES).forEach(function (k) {
       jobs.push(function (next) {
         loadImg("assets/characters/" + k + "_" + NAMES[k][0] + ".png", function (first) {
           if (!first) { next(); return; }

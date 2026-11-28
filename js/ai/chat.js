@@ -24,8 +24,10 @@ var Chat = (function () {
     // 开场白跟着当前语言显示；其他消息保持当时说的样子
     // （第 8 步之前存下的开场白没有 greeting 标记，按开头文字认出来）
     var isGreeting = msg.greeting || (index === 0 && msg.role === "assistant" && /^嗨，我是住在岛上的小助手/.test(msg.text));
+    if (msg.safety) { wrap.appendChild(renderSafety()); log.appendChild(wrap); return wrap; } // 安全提示：只显示求助信息，没有清单、没有小步骤
     bubble.textContent = isGreeting ? I18n.t("chat.greeting") : msg.text;
     wrap.appendChild(bubble);
+    if (msg.nextStep) wrap.appendChild(renderNextStep(msg, index));
     if (msg.plan) wrap.appendChild(renderPlan(msg, index));
     if (msg.quickReplies && msg.quickReplies.length) {
       var qr = document.createElement("div");
@@ -49,6 +51,49 @@ var Chat = (function () {
     log.querySelectorAll(".quick-replies").forEach(function (q) { q.remove(); });
   }
 
+  // 用户表达了伤害自己的念头：停止游戏化回应，只给求助信息（不加任务、不弹星星、不给小步骤）
+  function renderSafety() {
+    var card = document.createElement("div");
+    card.className = "safety-card";
+    var h = document.createElement("strong"); h.textContent = I18n.t("ai.safetyTitle");
+    var p = document.createElement("p"); p.textContent = I18n.t("ai.safetyBody");
+    var lines = document.createElement("p"); lines.className = "safety-lines"; lines.textContent = I18n.t("ai.safetyLines");
+    var stay = document.createElement("p"); stay.textContent = I18n.t("ai.safetyStay");
+    [h, p, lines, stay].forEach(function (el) { card.appendChild(el); });
+    return card;
+  }
+
+  // 「下一小步」卡片：可以加进今日任务，也可以点「换更小的」
+  function renderNextStep(msg, index) {
+    var ns = msg.nextStep;
+    var card = document.createElement("div");
+    card.className = "next-step";
+    var label = document.createElement("span"); label.className = "next-step-label"; label.textContent = I18n.t("ai.nextStep");
+    var text = document.createElement("div"); text.className = "next-step-text"; text.textContent = ns.text;
+    var foot = document.createElement("div"); foot.className = "plan-foot";
+    var add = document.createElement("button");
+    add.type = "button"; add.className = "pixel-btn";
+    if (ns.added) { add.disabled = true; add.textContent = I18n.t("ai.added"); } else { add.textContent = I18n.t("ai.addTask"); }
+    add.addEventListener("click", function () {
+      if (ns.added) return;
+      ns.added = true; save();
+      Tasks.addMany([ns.text]);
+      add.disabled = true; add.textContent = I18n.t("ai.added");
+    });
+    foot.appendChild(add);
+    if (ns.smaller && !ns.added) {
+      var sm = document.createElement("button");
+      sm.type = "button"; sm.className = "pixel-btn pixel-btn--icon"; sm.textContent = I18n.t("ai.smaller");
+      sm.addEventListener("click", function () {
+        ns.text = ns.smaller; ns.smaller = null; save();
+        text.textContent = ns.text; sm.remove();
+      });
+      foot.appendChild(sm);
+    }
+    card.appendChild(label); card.appendChild(text); card.appendChild(foot);
+    return card;
+  }
+
   function renderPlan(msg, index) {
     var plan = msg.plan;
     var card = document.createElement("div");
@@ -64,6 +109,7 @@ var Chat = (function () {
       box.disabled = !!plan.applied;
       box.dataset.i = i;
       li.querySelector(".plan-text").textContent = item.text;
+      if (item.note) { var nt = document.createElement("small"); nt.className = "plan-note"; nt.textContent = item.note; li.appendChild(nt); }
       if (plan.applied && plan.mode === "done" && item.checked !== false) li.classList.add("is-struck");
       ul.appendChild(li);
     });
@@ -106,7 +152,14 @@ var Chat = (function () {
     var all = log.querySelectorAll(".quick-replies");
     for (var i = 0; i < all.length - 1; i++) all[i].remove();
     if (all.length && history[history.length - 1].role !== "assistant") all[all.length - 1].remove();
+    syncChips();
     scrollDown();
+  }
+
+  // 最新一条是安全提示时，收起「今天想做…」这些游戏化的快捷短语
+  function syncChips() {
+    var chips = $("chat-chips"), last = history[history.length - 1];
+    if (chips) chips.hidden = !!(last && last.safety);
   }
 
   // ---------- 执行清单 ----------
@@ -181,13 +234,15 @@ var Chat = (function () {
     AI.chat(messages, context)
       .then(function (res) {
         var msg = { role: "assistant", text: res.reply, t: Date.now() };
+        if (res.safety) { msg.safety = true; msg.text = I18n.t("ai.safetyTitle"); return msg; }
         if (res.plan && res.plan.items && res.plan.items.length) {
           msg.plan = {
             mode: res.plan.mode,
             source: res.plan.source || null,
-            items: res.plan.items.map(function (t) { return { text: t, checked: true }; })
+            items: res.plan.items.map(function (t) { return typeof t === "string" ? { text: t, checked: true } : { text: t.text, note: t.note || "", checked: true }; })
           };
         }
+        if (res.nextStep) msg.nextStep = { text: res.nextStep.text, smaller: res.nextStep.smaller || null, added: false };
         if (res.quickReplies && res.quickReplies.length) msg.quickReplies = res.quickReplies;
         if (res.flow) msg.flow = res.flow;
         return msg;
@@ -200,6 +255,7 @@ var Chat = (function () {
         history.push(msg);
         save();
         renderMessage(msg, history.length - 1);
+        syncChips();
         scrollDown();
         busy = false;
       });
@@ -421,7 +477,17 @@ var Chat = (function () {
     }
     renderAll();
 
-    $("ai-mode").hidden = !AI.isMock();
+    // 练习模式 ⇄ AI 模式（现在 AI 模式用的是写死的示例，不联网）
+    var modeBtn = $("ai-mode");
+    function paintMode() {
+      var m = AIMode.get();
+      modeBtn.textContent = I18n.t(m === "ai" ? "ai.modeAI" : "ai.modePractice");
+      modeBtn.title = I18n.t("ai.modeTitle." + m);
+      modeBtn.classList.toggle("is-ai", m === "ai");
+    }
+    paintMode();
+    modeBtn.addEventListener("click", function () { AIMode.set(AIMode.get() === "ai" ? "practice" : "ai"); });
+    document.addEventListener("aimode:change", paintMode);
 
     $("chat-form").addEventListener("submit", function (e) {
       e.preventDefault();

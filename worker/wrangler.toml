@@ -1,0 +1,16 @@
+# Cloudflare Worker 的配置。部署步骤见 README.md
+name = "wins-log-ai"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# 允许哪些网址的网页来调用（逗号分隔）。本地双击打开的页面来源是 "null"，要试的话加上 null
+ALLOWED_ORIGINS = "https://isla99-dev.github.io,http://localhost:8767,http://127.0.0.1:8767,null"
+# 用哪家模型。现在只写了 deepseek，以后加别的在 src/providers/ 里新增一个文件
+PROVIDER = "deepseek"
+MODEL = "deepseek-chat"
+# 每个访问者（按 IP）每分钟最多几次 / 每天最多几次
+RATE_PER_MINUTE = "6"
+RATE_PER_DAY = "100"
+
+# ⚠️ 密钥（DEEPSEEK_API_KEY）不写在这个文件里！用命令设置：npx wrangler secret put DEEPSEEK_API_KEY

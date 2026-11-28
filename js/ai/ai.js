@@ -396,6 +396,7 @@ var AI = (function () {
   var brain = MockBrain;
 
   function chat(messages, context) {
+    if (typeof AIMode !== "undefined" && AIMode.isAI()) return AIMode.chat(messages, context || {}); // AI 模式（现在是假接口）
     var delay = 500 + Math.random() * 600; // 模拟一点“思考”的时间
     return new Promise(function (resolve, reject) {
       setTimeout(function () {
@@ -407,6 +408,6 @@ var AI = (function () {
   return {
     chat: chat,
     use: function (b) { brain = b; },
-    isMock: function () { return brain === MockBrain; }
+    isMock: function () { return brain === MockBrain; } // 规则回复 brain 在用（不管开关）
   };
 })();

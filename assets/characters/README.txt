@@ -13,5 +13,5 @@
   cat_rub.png         蹭小人
 
 怎么生效
-- 网站（GitHub Pages）：图放进这个文件夹，推送到 GitHub 就会用上（至少要有 cat_walk1.png）。
+- 网站（GitHub Pages）：图放进这个文件夹，再把 js/scene/characters.js 里的 USE_FOLDER_IMAGES 改成 true，推送到 GitHub 就会用上（至少要有 cat_walk1.png）。现在文件夹是空的，所以默认不去读，避免控制台报 404。
 - 双击打开的本地版：浏览器不让 3D 直接读这里的图，请在 ⚙ 设置 →「黑猫的图片」→ 导入。
