@@ -9,16 +9,33 @@
  *   ENDPOINT 填了 worker 的地址（见 worker/README.md）就 fetch 到真后端；留空则用 MockAPI（js/ai/mock-api.js，写死的示例，不联网）。
  *   ⚠️ 这里只有地址，没有 key。key 只存在 Cloudflare Worker 的环境变量里。
  *
- * 开关存在 localStorage 的 winslog-ai-mode（"practice" | "ai"），属于界面偏好，不在备份里。
+ * 默认是 AI 模式。手动切换的选择存在 localStorage 的 winslog-ai-mode2（"practice" | "ai"），属于界面偏好，不在备份里。
+ * （旧的 winslog-ai-mode 不再读：改成默认 AI 之后，每个人都先从 AI 模式开始。）
+ *
+ * 自动退回练习模式（不弹窗，只在那条回复下面轻轻提示一句）：
+ *   AI 出错 / 超时 / 模型乱回 → 这一句改用练习模式回答，接下来 10 分钟先用练习模式，之后自动再试 AI
+ *   这个人发得太快（按 IP 限流）→ 这一句用练习模式回答，1 分钟后再试 AI
+ *   全站今天的额度用完 → 今天剩下的时间都用练习模式，明天自动回到 AI
+ *   点一下模式标签可以马上换回 AI 再试。
  */
 var AIMode = (function () {
-  var KEY = "winslog-ai-mode";
+  var KEY = "winslog-ai-mode2";
+  var degradedUntil = 0, degradedWhy = ""; // 出错后暂时用练习模式到什么时候（只在这次打开的页面里有效）
   var ENDPOINT = "https://wins-log-ai.yuqinghuangedu.workers.dev/chat"; // Worker 的地址（只是地址，没有 key）；留空 = 用假接口 mock-api.js
   var TIMEOUT_MS = 15000;
 
-  function get() { try { return localStorage.getItem(KEY) === "ai" ? "ai" : "practice"; } catch (e) { return "practice"; } }
+  function pref() { try { return localStorage.getItem(KEY) === "practice" ? "practice" : "ai"; } catch (e) { return "ai"; } }
+  // 现在实际用的模式：选了 AI，但正在「暂时退回」或今天额度用完 → 练习模式
+  function get() {
+    if (pref() !== "ai") return "practice";
+    if (tiredToday() || Date.now() < degradedUntil) return "practice";
+    return "ai";
+  }
+  // 是不是「选了 AI、但暂时退回了练习模式」（模式标签上的说明用）
+  function fallenBack() { return pref() === "ai" && get() === "practice"; }
   function set(m) {
     try { localStorage.setItem(KEY, m === "ai" ? "ai" : "practice"); } catch (e) {}
+    if (m === "ai") { degradedUntil = 0; try { localStorage.removeItem(TIRED_KEY); } catch (e) {} } // 手动换回 AI：马上再试
     document.dispatchEvent(new CustomEvent("aimode:change", { detail: get() }));
   }
   function isAI() { return get() === "ai"; }
@@ -69,20 +86,28 @@ var AIMode = (function () {
     var req = buildRequest(last, context && context.lang || "zh");
     return transport(req)
       .then(function (raw) {
-        // 被限流：global = 全站今天的额度用完了 → 自动退回练习模式；ip = 这个人发得太快 / 今天太多
+        // 被限流：global = 全站今天的额度用完了；ip = 这个人发得太快 / 今天太多
         if (raw && raw.limited === "global") return tired();
-        if (raw && raw.limited === "ip") return { wins: [], steps: [], next_step: null, smaller_step: null, reply: I18n.t("ai.tooFast"), safety: false, fallback: true };
-        return AISchema.dropOldWins(AISchema.validate(raw), req.wins, req.text) || AISchema.fallback();
-      }, function () { return AISchema.fallback(); })
-      .then(toReply);
+        if (raw && raw.limited === "ip") return fallBack("fast", 60 * 1000);
+        if (raw && raw.fallback) return fallBack("error", 10 * 60 * 1000);     // 后端说模型出错 / 超时
+        var ok = AISchema.dropOldWins(AISchema.validate(raw), req.wins, req.text);
+        return ok ? toReply(ok) : fallBack("error", 10 * 60 * 1000);           // 格式不对
+      }, function () { return fallBack("error", 10 * 60 * 1000); });           // 连不上 / 超时
   }
 
   // 全站额度用完：今天改用练习模式，记下日期（明天可以再回 AI 模式）
   var TIRED_KEY = "winslog-ai-tired";
   function tired() {
     try { localStorage.setItem(TIRED_KEY, Store.dayKey()); } catch (e) {}
-    set("practice");
-    return { wins: [], steps: [], next_step: null, smaller_step: null, reply: I18n.t("ai.tired"), safety: false, fallback: true, limited: "global" };
+    document.dispatchEvent(new CustomEvent("aimode:change", { detail: get() }));
+    return { usePractice: true, note: I18n.t("ai.note.tired") };
+  }
+  // 暂时退回练习模式：这一句交给练习模式回答（ai.js 看到 usePractice 就用规则回复），回复下面带一句轻提示
+  function fallBack(why, ms) {
+    degradedUntil = Date.now() + ms; degradedWhy = why;
+    document.dispatchEvent(new CustomEvent("aimode:change", { detail: get() }));
+    setTimeout(function () { document.dispatchEvent(new CustomEvent("aimode:change", { detail: get() })); }, ms + 50); // 时间到了：标签自动变回 AI
+    return { usePractice: true, note: I18n.t("ai.note." + why) };
   }
   function tiredToday() { try { return localStorage.getItem(TIRED_KEY) === Store.dayKey(); } catch (e) { return false; } }
 
@@ -96,5 +121,5 @@ var AIMode = (function () {
     return out;
   }
 
-  return { get: get, set: set, isAI: isAI, chat: chat, buildRequest: buildRequest, tiredToday: tiredToday, post: post };
+  return { get: get, set: set, isAI: isAI, pref: pref, fallenBack: fallenBack, chat: chat, buildRequest: buildRequest, tiredToday: tiredToday, post: post };
 })();

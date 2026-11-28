@@ -27,6 +27,7 @@ var Chat = (function () {
     if (msg.safety) { wrap.appendChild(renderSafety()); log.appendChild(wrap); return wrap; } // 安全提示：只显示求助信息，没有清单、没有小步骤
     bubble.textContent = isGreeting ? I18n.t("chat.greeting") : msg.text;
     wrap.appendChild(bubble);
+    if (msg.note) { var nt = document.createElement("p"); nt.className = "msg-note"; nt.textContent = msg.note; wrap.appendChild(nt); }
     if (msg.steps) wrap.appendChild(renderSteps(msg, index));
     if (msg.nextStep) wrap.appendChild(renderNextStep(msg, index));
     if (msg.plan) wrap.appendChild(renderPlan(msg, index));
@@ -313,7 +314,8 @@ var Chat = (function () {
     AI.chat(messages, context)
       .then(function (res) {
         var msg = { role: "assistant", text: res.reply, t: Date.now() };
-        if (AIMode.isAI() && !res.fallback) msg.fromAI = true;
+        if (AIMode.isAI() && !res.fallback && !res.note) msg.fromAI = true;
+        if (res.note) msg.note = res.note; // 自动退回练习模式时的那句轻提示
         if (res.safety) { msg.safety = true; msg.text = I18n.t("ai.safetyTitle"); return msg; }
         if (res.plan && res.plan.items && res.plan.items.length) {
           msg.plan = {
@@ -607,11 +609,14 @@ var Chat = (function () {
     function paintMode() {
       var m = AIMode.get();
       modeBtn.textContent = I18n.t(m === "ai" ? "ai.modeAI" : "ai.modePractice");
-      modeBtn.title = I18n.t("ai.modeTitle." + m);
+      modeBtn.title = I18n.t(AIMode.fallenBack() ? "ai.modeTitle.fallback" : "ai.modeTitle." + m);
       modeBtn.classList.toggle("is-ai", m === "ai");
     }
     paintMode();
-    modeBtn.addEventListener("click", function () { AIMode.set(AIMode.get() === "ai" ? "practice" : "ai"); });
+    modeBtn.addEventListener("click", function () {
+      // 暂时退回了练习模式：点一下马上再试 AI；否则在两种模式之间切换
+      AIMode.set(AIMode.fallenBack() ? "ai" : (AIMode.get() === "ai" ? "practice" : "ai"));
+    });
     document.addEventListener("aimode:change", paintMode);
     document.addEventListener("nextonly:change", renderAll); // 设置里切换「只看下一步」：步骤卡片重画
 

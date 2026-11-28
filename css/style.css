@@ -954,3 +954,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* 小助手的多行消息（比如第一次打开的功能介绍）保留换行 */
 .msg--ai .msg-bubble { white-space: pre-line; }
+
+/* 自动退回练习模式时，回复下面那句轻提示 */
+.msg-note { margin: 3px 4px 0; font-size: 12px; line-height: 1.45; color: var(--ink-soft); }

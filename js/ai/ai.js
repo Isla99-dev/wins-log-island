@@ -396,7 +396,15 @@ var AI = (function () {
   var brain = MockBrain;
 
   function chat(messages, context) {
-    if (typeof AIMode !== "undefined" && AIMode.isAI()) return AIMode.chat(messages, context || {}); // AI 模式（现在是假接口）
+    if (typeof AIMode !== "undefined" && AIMode.isAI()) {
+      // AI 模式；AI 出错 / 超时 / 超出上限时，这一句改由练习模式回答，并带一句轻提示
+      return AIMode.chat(messages, context || {}).then(function (res) {
+        if (!res || !res.usePractice) return res;
+        var r = brain.chat(messages, context || {});
+        r.note = res.note;
+        return r;
+      });
+    }
     var delay = 500 + Math.random() * 600; // 模拟一点“思考”的时间
     return new Promise(function (resolve, reject) {
       setTimeout(function () {
