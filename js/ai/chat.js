@@ -293,6 +293,7 @@ var Chat = (function () {
     AI.chat(messages, context)
       .then(function (res) {
         var msg = { role: "assistant", text: res.reply, t: Date.now() };
+        if (AIMode.isAI() && !res.fallback) msg.fromAI = true;
         if (res.safety) { msg.safety = true; msg.text = I18n.t("ai.safetyTitle"); return msg; }
         if (res.plan && res.plan.items && res.plan.items.length) {
           msg.plan = {
@@ -314,8 +315,13 @@ var Chat = (function () {
         typing.remove();
         history.push(msg);
         save();
-        renderMessage(msg, history.length - 1);
+        var node = renderMessage(msg, history.length - 1);
         syncChips();
+        // AI 模式：AI 挖出来的 Wins 都是已经做到的事，直接划掉记进今天的 Wins（每件在小岛上冲出 +1、+10 金币、种一棵树）
+        if (msg.fromAI && msg.plan && msg.plan.mode === "done" && !msg.plan.applied) {
+          var card = node.querySelector(".plan");
+          if (card) setTimeout(function () { applyPlan(card, history.indexOf(msg)); }, 500);
+        }
         if (AIMode.isAI() && !msg.safety) Memory.touch(); // 3 分钟没新消息 = 今天第一次对话结束，更新摘要
         scrollDown();
         busy = false;

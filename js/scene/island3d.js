@@ -1082,6 +1082,21 @@ var Island = (function () {
       const c = groundCell(); if (c) goTo(c.x, c.z);
     }
     const bubble = $("i3-bubble"); let bubbleAt = null, bubbleT = 0;
+    // 完成一件事：从那棵树上冲出「+1」和金币数（每件都冲一次，几件一起完成时一个接一个）
+    const pops = [], POP_MS = 1500;
+    let popQueue = 0;
+    function plusOne(v) {
+      const delay = Math.max(0, popQueue - performance.now());
+      popQueue = performance.now() + delay + 260;
+      setTimeout(() => {
+        const el = document.createElement("div");
+        el.className = "i3-plus"; el.setAttribute("aria-hidden", "true");
+        el.innerHTML = '<b>+1</b><small></small>';
+        el.querySelector("small").textContent = T("i3.plusCoins", { n: 10 });
+        bubble.parentNode.appendChild(el);
+        pops.push({ v, el, t0: performance.now() });
+      }, delay);
+    }
     function say(v, text) { bubbleAt = v; bubble.textContent = text; bubble.classList.add("is-on"); bubbleT = performance.now() + 2800; }
     function bounce(o) { bounces.push({ o, t0: performance.now(), s: o.scale.clone() }); }
 
@@ -1130,7 +1145,8 @@ var Island = (function () {
         const t = Store.winsOf().find(w => w.id === d.id); if (!t) return;
         const g = plantTree(t, true); Store.save();
         if (g) {
-          const c = g.userData.obj.cell; goTo(c.x, c.z, true);
+          const c = g.userData.obj.cell;
+          plusOne(V(c.x, c.h + 1.6, c.z)); goTo(c.x, c.z, true);
           me.onArrive = () => { me.g.rotation.y = Math.atan2(c.x - me.x, c.z - me.z); act(me, "work", 2400, () => act(me, "happy", 1500)); }; // 走过去浇浇水，然后开心一下
           setTimeout(() => say(V(c.x, c.h + 2.2, c.z), T("i3.planted", { text: t.text })), 350);
         }
@@ -1392,6 +1408,15 @@ var Island = (function () {
       cat.card.rotation.y = Math.atan2(cam.position.x - cat.g.position.x, cam.position.z - cat.g.position.z); cat.m.color.setScalar(tint);
       for (let i = grows.length - 1; i >= 0; i--) { const g = grows[i], k = Math.min(1, (now - g.t0) / 900), e = 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2); g.g.scale.setScalar(Math.max(.01, e)); if (k >= 1) { g.g.scale.setScalar(1); grows.splice(i, 1); } }
       for (let i = bounces.length - 1; i >= 0; i--) { const b = bounces[i], k = (now - b.t0) / 350; if (k >= 1) { b.o.scale.copy(b.s); bounces.splice(i, 1); } else { const q = 1 + Math.sin(k * Math.PI) * .07; b.o.scale.set(b.s.x / q, b.s.y * q, b.s.z / q); } }
+      for (let i = pops.length - 1; i >= 0; i--) {
+        const p = pops[i], k = (now - p.t0) / POP_MS;
+        if (k >= 1) { p.el.remove(); pops.splice(i, 1); continue; }
+        const v = p.v.clone().project(cam);
+        p.el.style.left = ((v.x + 1) / 2 * VW) + "px";
+        p.el.style.top = ((1 - v.y) / 2 * VH - 70 * (1 - Math.pow(1 - k, 3))) + "px"; // 冲上去，越来越慢
+        p.el.style.opacity = k < 0.7 ? 1 : (1 - k) / 0.3;
+        p.el.style.transform = "translate(-50%, -100%) scale(" + (k < 0.15 ? 0.6 + k / 0.15 * 0.6 : 1.2 - Math.min(k - 0.15, 0.2)) + ")";
+      }
       if (bubbleAt) { if (now > bubbleT) { bubble.classList.remove("is-on"); bubbleAt = null; } else { const v = bubbleAt.clone().project(cam); bubble.style.left = ((v.x + 1) / 2 * VW) + "px"; bubble.style.top = ((1 - v.y) / 2 * VH) + "px"; } }
       if (composer) composer.render(); else renderer.render(scene, cam);
     }
