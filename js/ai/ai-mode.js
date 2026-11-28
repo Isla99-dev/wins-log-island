@@ -6,15 +6,14 @@
  *             拿回结构化 JSON（格式见 js/ai/schema.js），校验后变成聊天面板能显示的回复。
  *
  * transport（请求发到哪里）：
- *   现在是 MockAPI（js/ai/mock-api.js，写死的示例，不联网）。
- *   接真后端时：把 ENDPOINT 改成 worker 部署后的地址（见 worker/README.md），transport 就会 fetch 过去。
+ *   ENDPOINT 填了 worker 的地址（见 worker/README.md）就 fetch 到真后端；留空则用 MockAPI（js/ai/mock-api.js，写死的示例，不联网）。
  *   ⚠️ 这里只有地址，没有 key。key 只存在 Cloudflare Worker 的环境变量里。
  *
  * 开关存在 localStorage 的 winslog-ai-mode（"practice" | "ai"），属于界面偏好，不在备份里。
  */
 var AIMode = (function () {
   var KEY = "winslog-ai-mode";
-  var ENDPOINT = ""; // 例如 "https://wins-log-ai.<你的名字>.workers.dev/chat"；留空 = 用假接口
+  var ENDPOINT = "https://wins-log-ai.yuqinghuangedu.workers.dev/chat"; // Worker 的地址（只是地址，没有 key）；留空 = 用假接口 mock-api.js
   var TIMEOUT_MS = 15000;
 
   function get() { try { return localStorage.getItem(KEY) === "ai" ? "ai" : "practice"; } catch (e) { return "practice"; } }
