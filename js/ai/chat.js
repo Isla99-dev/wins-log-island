@@ -67,7 +67,10 @@ var Chat = (function () {
 
   // 拆任务的步骤卡片：第一步高亮、后面稍淡；右上角「?」说明 🌱🌿🌳；设置里「只看下一步」打开时只露出第一步
   function renderSteps(msg, index) {
-    var st = msg.steps, nextOnly = Settings.nextOnly();
+    var st = msg.steps;
+    // 只露出第一步：设置里开了「只看下一步」，或者今天电量低（低电量时还能点「看全部步骤」展开）
+    var lowFold = !!st.lowEnergy && !st.expanded;
+    var nextOnly = Settings.nextOnly() || lowFold;
     var card = document.createElement("div");
     card.className = "steps-card" + (st.seen ? "" : " is-new");
     if (!st.seen) { st.seen = true; save(); } // 只有第一次出现时弹一下
@@ -95,7 +98,17 @@ var Chat = (function () {
     card.appendChild(ol);
     if (nextOnly && st.items.length > 1) {
       var more = document.createElement("small"); more.className = "steps-more";
-      more.textContent = I18n.t("ai.stepsMore", { n: st.items.length - 1 });
+      more.textContent = I18n.t(lowFold && !Settings.nextOnly() ? "ai.stepsMoreLow" : "ai.stepsMore", { n: st.items.length - 1 });
+      if (lowFold && !Settings.nextOnly()) {
+        var all = document.createElement("button");
+        all.type = "button"; all.className = "steps-all"; all.textContent = I18n.t("ai.stepsShowAll");
+        all.addEventListener("click", function () {
+          st.expanded = true; save();
+          var fresh = renderSteps(msg, index); card.parentNode.replaceChild(fresh, card);
+        });
+        more.appendChild(document.createTextNode(" "));
+        more.appendChild(all);
+      }
       card.appendChild(more);
     }
 
@@ -324,7 +337,8 @@ var Chat = (function () {
             items: res.plan.items.map(function (t) { return typeof t === "string" ? { text: t, checked: true } : { text: t.text, note: t.note || "", checked: true }; })
           };
         }
-        if (res.steps) msg.steps = { items: res.steps.items.map(function (s) { return { text: s.text, size: s.size }; }), smaller: res.steps.smaller || null, added: false };
+        if (res.steps) msg.steps = { items: res.steps.items.map(function (s) { return { text: s.text, size: s.size }; }), smaller: res.steps.smaller || null, added: false,
+                                     lowEnergy: Store.userMeta().energy === "low" }; // 回复时电量低：卡片先只露出第一步
         if (res.nextStep) msg.nextStep = { text: res.nextStep.text, smaller: res.nextStep.smaller || null, added: false };
         if (res.quickReplies && res.quickReplies.length) msg.quickReplies = res.quickReplies;
         if (res.flow) msg.flow = res.flow;

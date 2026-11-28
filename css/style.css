@@ -957,3 +957,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* 自动退回练习模式时，回复下面那句轻提示 */
 .msg-note { margin: 3px 4px 0; font-size: 12px; line-height: 1.45; color: var(--ink-soft); }
+
+/* 低电量时步骤卡片下面的「看全部步骤」 */
+.steps-all { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--clay-dark); text-decoration: underline; cursor: pointer; }
