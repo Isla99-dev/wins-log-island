@@ -951,3 +951,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .plan-undo:disabled { cursor: default; text-decoration: none; }
 .plan li.is-undone .plan-text, .plan li.is-undone .plan-note { opacity: .5; }
 .plan li:has(.plan-undo) label { padding-right: 48px; }
+
+/* 小助手的多行消息（比如第一次打开的功能介绍）保留换行 */
+.msg--ai .msg-bubble { white-space: pre-line; }

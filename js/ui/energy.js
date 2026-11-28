@@ -35,6 +35,7 @@ var Energy = (function () {
 
   function maybeAsk() {
     if (Store.energyAsked()) return;
+    if (Onboarding.isActive()) return; // 第一次打开：等第一个 Win 和介绍说完（onboarding:done）再问
     var tip = $("i3-tip");
     if (tip && !tip.hidden) { setTimeout(maybeAsk, 600); return; } // 等说明关掉
     open();
@@ -53,6 +54,7 @@ var Energy = (function () {
     paintChip();
     if (/[#&]energy=ask/.test(location.hash)) { open(); return; } // 截图检查用
     setTimeout(maybeAsk, 800);
+    document.addEventListener("onboarding:done", function () { setTimeout(maybeAsk, 7000); }); // 先让人看完功能介绍
   }
 
   return { init: init, open: open, LEVELS: LEVELS };

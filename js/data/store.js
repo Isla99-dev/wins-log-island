@@ -232,6 +232,9 @@ var Store = (function () {
       var d = data.days[dayKey()];
       return { summary: data.meta.userSummary || "", energy: (d && d.energy) || null };
     },
+    // 「第一次打开的 2 分钟」走过没有
+    onboarded: function () { return !!data.meta.onboarded; },
+    markOnboarded: function () { if (!data.meta.onboarded) { data.meta.onboarded = Date.now(); save(); } },
     // 今天的电量："low" | "mid" | "high"；null = 跳过了。每天问一次（存在当天的记录里）
     setEnergy: function (level) {
       var d = getDay();

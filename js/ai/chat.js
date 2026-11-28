@@ -235,7 +235,7 @@ var Chat = (function () {
   // 最新一条是安全提示时，收起「今天想做…」这些游戏化的快捷短语
   function syncChips() {
     var chips = $("chat-chips"), last = history[history.length - 1];
-    if (chips) chips.hidden = !!(last && last.safety);
+    if (chips) chips.hidden = !!(last && last.safety) || Onboarding.isActive(); // 第一次打开时也先收起，只留一个问题
   }
 
   // ---------- 执行清单 ----------
@@ -293,6 +293,7 @@ var Chat = (function () {
   function send(text) {
     text = (text || "").trim();
     if (!text || busy) return;
+    if (Onboarding.isActive()) { firstWin(text); return; }
     busy = true;
     retireQuickReplies();
     history.push({ role: "user", text: text, t: Date.now() });
@@ -345,6 +346,32 @@ var Chat = (function () {
         scrollDown();
         busy = false;
       });
+  }
+
+  // 第一次打开：用户的第一句话 → 马上记成第一个 Win（小岛长苗、+1），再简单介绍其他功能
+  function firstWin(text) {
+    busy = true;
+    retireQuickReplies();
+    history.push({ role: "user", text: text, t: Date.now() });
+    renderMessage(history[history.length - 1]);
+    var r = Onboarding.reply(text);
+    var msg = { role: "assistant", text: r.first, t: Date.now(), plan: { mode: "done", items: [{ text: r.win, checked: true }] } };
+    history.push(msg); save();
+    var node = renderMessage(msg, history.length - 1);
+    scrollDown();
+    var card = node.querySelector(".plan");
+    setTimeout(function () { applyPlan(card, history.indexOf(msg)); }, 400);
+    setTimeout(function () {
+      var intro = { role: "assistant", text: r.intro, t: Date.now() };
+      history.push(intro); save();
+      // 手机竖屏：看完小岛长苗，抽屉拉回顶上，介绍才看得全
+      if (document.body.classList.contains("layout-portrait") && window.Sheet) Sheet.go("full");
+      renderMessage(intro, history.length - 1);
+      scrollDown();
+      busy = false;
+      syncChips();
+      document.dispatchEvent(new CustomEvent("onboarding:done"));
+    }, 3700); // 等小岛上「种下了……」的气泡消失（约 3.5 秒）再介绍，免得叠在一起
   }
 
   function hint(text, ms) {
@@ -557,7 +584,11 @@ var Chat = (function () {
     log = $("chat-log");
     input = $("chat-input");
     history = Store.getChat();
-    if (!history.length) {
+    if (Onboarding.begin()) {
+      // 全新用户：开场白换成一个问题，回答马上变成第一个 Win
+      history.push({ role: "assistant", onboard: true, text: I18n.t("onboard.ask"), t: Date.now() });
+      save();
+    } else if (!history.length) {
       history.push({ role: "assistant", greeting: true, text: I18n.t("chat.greeting"), t: Date.now() });
       save();
     }
