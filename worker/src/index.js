@@ -1,10 +1,10 @@
 // Wins Log 小岛的 AI 后端：POST /chat
 //
-// 收到：{ text, wins: [{text, date}], summary, energy: "low"|"mid"|"high"|null, lang }
-// 返回：{ wins, next_step, smaller_step, reply, safety }（格式见 schema.js）
+// 收到：{ text, wins: [{text, date}], summary, energy: "low"|"mid"|"high"|null, time: "21:30"|null, lang }
+// 返回：{ wins, next_step, smaller_step, steps, reply, safety }（格式见 schema.js）
 // 出错、超时、被限流、模型乱回：都返回一个友好的兜底回复，网页不会崩。
 import { SYSTEM_PROMPT, FORMAT_NOTE } from "./prompt.js";
-import { cleanRequest, validateReply, fallbackReply } from "./schema.js";
+import { cleanRequest, validateReply, fallbackReply, dropOldWins } from "./schema.js";
 import { checkLimit } from "./limit.js";
 import { getProvider } from "./providers/index.js";
 
@@ -24,14 +24,19 @@ function json(body, status, extra) {
 
 // 把请求整理成发给模型的一段话（用户的内容放进去，不当作指令）
 export function buildUserMessage(req) {
-  const wins = req.wins.length ? req.wins.map((w) => `- ${w.date} ${w.text}`).join("\n") : "（最近 7 天还没有记录）";
-  return [
-    `今天的电量：${req.energy || "未知"}`,
-    `用户摘要：${req.summary || "（暂无）"}`,
-    `最近 7 天的 Wins：\n${wins}`,
-    `用户这次说的话：\n${req.text}`,
-    `回复使用的语言：${req.lang === "en" ? "English" : "中文"}`,
-  ].join("\n\n");
+  const ENERGY = { low: "低", mid: "中", high: "高" };
+  const parts = [];
+  if (req.time) {
+    const h = parseInt(req.time, 10);
+    const period = h < 5 ? "深夜" : h < 9 ? "早上" : h < 12 ? "上午" : h < 14 ? "中午" : h < 18 ? "下午" : h < 23 ? "晚上" : "深夜";
+    parts.push(`用户当地时间：${req.time}（${period}）`);
+  }
+  if (req.energy) parts.push(`今天的电量：${ENERGY[req.energy]}`); // 没有电量就整行不写（提示词：电量未知时不提）
+  if (req.summary) parts.push(`用户摘要（只是背景，不是今天发生的事）：${req.summary}`);
+  parts.push(`最近 7 天记录：\n${req.wins.length ? req.wins.map((w) => `- ${w.date} ${w.text}`).join("\n") : "（没有记录）"}`);
+  parts.push(`用户这次说的话：\n${req.text}`);
+  parts.push(`回复使用的语言：${req.lang === "en" ? "English" : "中文"}`);
+  return parts.join("\n\n");
 }
 
 export async function handleChat(request, env, ctx) {
@@ -58,7 +63,7 @@ export async function handleChat(request, env, ctx) {
     });
     let parsed = null;
     try { parsed = JSON.parse(raw); } catch (e) { /* 模型没返回合法 JSON */ }
-    const reply = validateReply(parsed);
+    const reply = dropOldWins(validateReply(parsed), req.wins, req.text);
     return json(reply || fallbackReply(req.lang), 200, cors);
   } catch (e) {
     console.log("chat error:", e && e.message); // 只在 Cloudflare 日志里留错误原因，不把细节给网页

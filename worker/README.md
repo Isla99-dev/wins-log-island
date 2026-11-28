@@ -91,6 +91,7 @@ curl -X POST "https://wins-log-ai.你的名字.workers.dev/chat" -H "Content-Typ
   "wins":  [ { "text": "已经做到的小事", "note": "一句不肉麻的话" } ],
   "next_step": "下一件 2 分钟就能开始的小事",
   "smaller_step": "更小的一步（点「换更小的」时用）",
+  "steps": [ { "text": "拆出来的一步", "size": "🌱" } ],
   "reply": "小助手要说的话",
   "safety": false
 }

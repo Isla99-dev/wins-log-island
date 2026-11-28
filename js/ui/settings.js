@@ -9,6 +9,10 @@ var Settings = (function () {
   var $ = function (id) { return document.getElementById(id); };
   var pending = null, lastFocus = null;
   var DEBUG_KEY = "winslog-debug";
+  // 「只看下一步」：拆任务的卡片只露出第一步（界面偏好，不在备份里）
+  var NEXT_ONLY_KEY = "winslog-next-only";
+  var nextOnly = false;
+  try { nextOnly = localStorage.getItem(NEXT_ONLY_KEY) === "on"; } catch (e) {}
   var debugOn = false;
   try { debugOn = localStorage.getItem(DEBUG_KEY) === "on"; } catch (e) { /* 读不到就当关着 */ }
 
@@ -54,6 +58,9 @@ var Settings = (function () {
     sw.setAttribute("aria-checked", Sound.isOn() ? "true" : "false");
     sw.querySelector(".switch-label").textContent = I18n.t(Sound.isOn() ? "settings.on" : "settings.off");
     renderVoiceExp();
+    var nw = $("nextonly-switch");
+    nw.setAttribute("aria-checked", nextOnly ? "true" : "false");
+    nw.querySelector(".switch-label").textContent = I18n.t(nextOnly ? "settings.on" : "settings.off");
     var dw = $("debug-switch");
     dw.setAttribute("aria-checked", debugOn ? "true" : "false");
     dw.querySelector(".switch-label").textContent = I18n.t(debugOn ? "settings.on" : "settings.off");
@@ -181,6 +188,12 @@ var Settings = (function () {
       Chat.setExp(+b.dataset.exp);
       location.reload(); // 换实验后刷新页面：每个实验都要从干净的页面开始（尤其是音频会话）
     });
+    $("nextonly-switch").addEventListener("click", function () {
+      nextOnly = !nextOnly;
+      try { localStorage.setItem(NEXT_ONLY_KEY, nextOnly ? "on" : "off"); } catch (e) {}
+      renderStatus();
+      document.dispatchEvent(new CustomEvent("nextonly:change", { detail: { on: nextOnly } }));
+    });
     $("debug-switch").addEventListener("click", function () {
       debugOn = !debugOn;
       try { localStorage.setItem(DEBUG_KEY, debugOn ? "on" : "off"); } catch (e) {}
@@ -223,5 +236,5 @@ var Settings = (function () {
   // 从别处（比如「没有记录」的提示）直接打开设置并选备份文件
   function importPrompt() { open(); chooseFile(); }
 
-  return { init: init, open: open, importPrompt: importPrompt, isDebug: function () { return debugOn; } };
+  return { init: init, open: open, importPrompt: importPrompt, isDebug: function () { return debugOn; }, nextOnly: function () { return nextOnly; } };
 })();

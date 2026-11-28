@@ -27,6 +27,7 @@ var Chat = (function () {
     if (msg.safety) { wrap.appendChild(renderSafety()); log.appendChild(wrap); return wrap; } // 安全提示：只显示求助信息，没有清单、没有小步骤
     bubble.textContent = isGreeting ? I18n.t("chat.greeting") : msg.text;
     wrap.appendChild(bubble);
+    if (msg.steps) wrap.appendChild(renderSteps(msg, index));
     if (msg.nextStep) wrap.appendChild(renderNextStep(msg, index));
     if (msg.plan) wrap.appendChild(renderPlan(msg, index));
     if (msg.quickReplies && msg.quickReplies.length) {
@@ -60,6 +61,64 @@ var Chat = (function () {
     var lines = document.createElement("p"); lines.className = "safety-lines"; lines.textContent = I18n.t("ai.safetyLines");
     var stay = document.createElement("p"); stay.textContent = I18n.t("ai.safetyStay");
     [h, p, lines, stay].forEach(function (el) { card.appendChild(el); });
+    return card;
+  }
+
+  // 拆任务的步骤卡片：第一步高亮、后面稍淡；右上角「?」说明 🌱🌿🌳；设置里「只看下一步」打开时只露出第一步
+  function renderSteps(msg, index) {
+    var st = msg.steps, nextOnly = Settings.nextOnly();
+    var card = document.createElement("div");
+    card.className = "steps-card" + (st.seen ? "" : " is-new");
+    if (!st.seen) { st.seen = true; save(); } // 只有第一次出现时弹一下
+
+    var head = document.createElement("div"); head.className = "steps-head";
+    var title = document.createElement("span"); title.className = "next-step-label"; title.textContent = I18n.t("ai.stepsTitle");
+    var q = document.createElement("button");
+    q.type = "button"; q.className = "steps-q"; q.textContent = "?";
+    q.setAttribute("aria-label", I18n.t("ai.stepsHelpAria")); q.setAttribute("aria-expanded", "false");
+    var help = document.createElement("p"); help.className = "steps-help"; help.hidden = true; help.textContent = I18n.t("ai.stepsHelp");
+    q.addEventListener("click", function () { help.hidden = !help.hidden; q.setAttribute("aria-expanded", help.hidden ? "false" : "true"); });
+    head.appendChild(title); head.appendChild(q);
+    card.appendChild(head); card.appendChild(help);
+
+    var ol = document.createElement("ol");
+    st.items.forEach(function (it, i) {
+      if (nextOnly && i > 0) return;
+      var li = document.createElement("li");
+      li.className = i === 0 ? "is-first" : "is-later";
+      var size = document.createElement("span"); size.className = "step-size"; size.textContent = it.size; size.setAttribute("aria-hidden", "true");
+      var tx = document.createElement("span"); tx.textContent = it.text;
+      li.appendChild(size); li.appendChild(tx);
+      ol.appendChild(li);
+    });
+    card.appendChild(ol);
+    if (nextOnly && st.items.length > 1) {
+      var more = document.createElement("small"); more.className = "steps-more";
+      more.textContent = I18n.t("ai.stepsMore", { n: st.items.length - 1 });
+      card.appendChild(more);
+    }
+
+    var foot = document.createElement("div"); foot.className = "plan-foot";
+    var add = document.createElement("button"); add.type = "button"; add.className = "pixel-btn";
+    function paintAdd() { add.disabled = !!st.added; add.textContent = st.added ? I18n.t("ai.added") : I18n.t("ai.addSteps"); }
+    paintAdd();
+    add.addEventListener("click", function () {
+      if (st.added) return;
+      st.added = true; save();
+      Tasks.addMany((nextOnly ? st.items.slice(0, 1) : st.items).map(function (it) { return it.text; }));
+      paintAdd();
+      var sm = foot.querySelector(".pixel-btn--icon"); if (sm) sm.remove();
+    });
+    foot.appendChild(add);
+    if (st.smaller && !st.added) {
+      var sm = document.createElement("button"); sm.type = "button"; sm.className = "pixel-btn pixel-btn--icon"; sm.textContent = I18n.t("ai.smaller");
+      sm.addEventListener("click", function () {
+        st.items[0] = { text: st.smaller, size: "🌱" }; st.smaller = null; save();
+        var fresh = renderSteps(msg, index); card.parentNode.replaceChild(fresh, card);
+      });
+      foot.appendChild(sm);
+    }
+    card.appendChild(foot);
     return card;
   }
 
@@ -242,6 +301,7 @@ var Chat = (function () {
             items: res.plan.items.map(function (t) { return typeof t === "string" ? { text: t, checked: true } : { text: t.text, note: t.note || "", checked: true }; })
           };
         }
+        if (res.steps) msg.steps = { items: res.steps.items.map(function (s) { return { text: s.text, size: s.size }; }), smaller: res.steps.smaller || null, added: false };
         if (res.nextStep) msg.nextStep = { text: res.nextStep.text, smaller: res.nextStep.smaller || null, added: false };
         if (res.quickReplies && res.quickReplies.length) msg.quickReplies = res.quickReplies;
         if (res.flow) msg.flow = res.flow;
@@ -488,6 +548,7 @@ var Chat = (function () {
     paintMode();
     modeBtn.addEventListener("click", function () { AIMode.set(AIMode.get() === "ai" ? "practice" : "ai"); });
     document.addEventListener("aimode:change", paintMode);
+    document.addEventListener("nextonly:change", renderAll); // 设置里切换「只看下一步」：步骤卡片重画
 
     $("chat-form").addEventListener("submit", function (e) {
       e.preventDefault();

@@ -10,6 +10,17 @@
 var MockAPI = (function () {
   var CRISIS = /(想死|不想活|活着没意思|自杀|轻生|结束生命|伤害自己|自残|割腕|kill myself|suicid|end my life|hurt myself|self[- ]harm)/i;
   var EN = /[a-z]{3,}/i;
+  var SPLIT = /(拆|分解|好多事|太大|break (it )?down|split)/i;
+  var STEPS = {
+    zh: { reply: "好，我们把它拆小一点。先只做第一步：把招聘页面打开，打开了就算赢，可以停。",
+          steps: [{ text: "打开招聘页面", size: "🌱" }, { text: "把职位要求复制到一个文档里", size: "🌱" },
+                  { text: "对着要求改简历开头三行", size: "🌿" }, { text: "写一段简短的求职信", size: "🌳" }, { text: "点「投递」", size: "🌱" }],
+          smaller: "只在浏览器里输入招聘网站的名字" },
+    en: { reply: "Okay, let's make it smaller. Just the first step for now: open the job page. That's a win, and you can stop there.",
+          steps: [{ text: "Open the job page", size: "🌱" }, { text: "Copy the requirements into a doc", size: "🌱" },
+                  { text: "Tweak the top three lines of your CV", size: "🌿" }, { text: "Write a short cover note", size: "🌳" }, { text: "Hit apply", size: "🌱" }],
+          smaller: "Just type the job site's name into the browser" }
+  };
 
   var SAMPLES = {
     zh: {
@@ -40,8 +51,14 @@ var MockAPI = (function () {
           resolve({ wins: [], next_step: null, smaller_step: null, reply: "", safety: true });
           return;
         }
+        var lang = (request && request.lang === "en") ? "en" : "zh";
+        if (SPLIT.test(text)) {
+          var t = STEPS[lang];
+          resolve({ wins: [], next_step: t.steps[0].text, smaller_step: t.smaller, steps: t.steps, reply: t.reply, safety: false });
+          return;
+        }
         var s = SAMPLES[(request && request.lang === "en") || (EN.test(text) && !/[一-鿿]/.test(text)) ? "en" : "zh"];
-        resolve({ wins: s.wins, next_step: s.next_step, smaller_step: s.smaller_step, reply: s.reply, safety: false });
+        resolve({ wins: s.wins, next_step: s.next_step, smaller_step: s.smaller_step, steps: [], reply: s.reply, safety: false });
       }, 700 + Math.random() * 500);
     });
   }

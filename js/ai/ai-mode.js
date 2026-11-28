@@ -41,7 +41,9 @@ var AIMode = (function () {
   }
 
   function buildRequest(text, lang) {
-    return { text: text, wins: recentWins(), summary: summary(), energy: Store.userMeta().energy || null, lang: lang };
+    var d = new Date(), pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return { text: text, wins: recentWins(), summary: summary(), energy: Store.userMeta().energy || null,
+             time: pad(d.getHours()) + ":" + pad(d.getMinutes()), lang: lang };
   }
 
   function transport(request) {
@@ -59,8 +61,9 @@ var AIMode = (function () {
   // 返回聊天面板用的 Reply（和 ai.js 的格式一致，再加 nextStep / safety / fallback）
   function chat(messages, context) {
     var last = messages.length ? messages[messages.length - 1].text : "";
-    return transport(buildRequest(last, context && context.lang || "zh"))
-      .then(function (raw) { return AISchema.validate(raw) || AISchema.fallback(); }, function () { return AISchema.fallback(); })
+    var req = buildRequest(last, context && context.lang || "zh");
+    return transport(req)
+      .then(function (raw) { return AISchema.dropOldWins(AISchema.validate(raw), req.wins, req.text) || AISchema.fallback(); }, function () { return AISchema.fallback(); })
       .then(toReply);
   }
 
@@ -68,7 +71,9 @@ var AIMode = (function () {
     if (r.safety) return { reply: "", safety: true, plan: null };
     var out = { reply: r.reply, plan: null, safety: false, fallback: !!r.fallback };
     if (r.wins.length) out.plan = { mode: "done", items: r.wins.map(function (w) { return { text: w.text, note: w.note }; }) };
-    if (r.next_step) out.nextStep = { text: r.next_step, smaller: r.smaller_step };
+    // 拆了任务：显示步骤卡片（「换更小的」作用在第一步上）；没拆：显示「下一小步」卡片
+    if (r.steps.length) out.steps = { items: r.steps, smaller: r.smaller_step };
+    else if (r.next_step) out.nextStep = { text: r.next_step, smaller: r.smaller_step };
     return out;
   }
 

@@ -69,9 +69,9 @@ Wins Log 小岛
   - `js/ai/`：小助手（`ai.js` 回答、`chat.js` 聊天面板和语音输入）。
   - `js/app.js`：入口，把上面几块接起来。
   - 新文件放进对应文件夹；角色相关代码（`js/scene/chibi*.js`、`characters.js`）只搬过位置，内容没改。
-- **AI 助手（第 1 期 1a：已接上真后端，提示词还是空的）**：
-  - `worker/`：Cloudflare Worker 后端（`POST /chat`），模型调用封装在 `worker/src/providers/`（先写了 DeepSeek），key 只从 Worker 环境变量读（`wrangler secret put DEEPSEEK_API_KEY`），部署步骤见 `worker/README.md`。提示词留在 `worker/src/prompt.js`（现在空着，等用户提供）。
-  - 回复 JSON：`{ wins:[{text,note}], next_step, smaller_step, reply, safety }`，网页用 `js/ai/schema.js` 校验，格式不对用兜底回复；`safety:true` 时前端停止游戏化回应、只显示求助信息。
+- **AI 助手（第 1 期 1a：已接上真后端，提示词已写入）**：
+  - `worker/`：Cloudflare Worker 后端（`POST /chat`），模型调用封装在 `worker/src/providers/`（先写了 DeepSeek），key 只从 Worker 环境变量读（`wrangler secret put DEEPSEEK_API_KEY`），部署步骤见 `worker/README.md`。提示词在 `worker/src/prompt.js`（用户提供，改动后要用户自己 `npx wrangler deploy`）。网页请求带当地时间 `time`（晚上回顾用）；电量为空时不写进给模型的话。
+  - 回复 JSON：`{ wins:[{text,note}], next_step, smaller_step, steps:[{text,size:🌱|🌿|🌳}], reply, safety }`；`wins` 里和「最近 7 天记录」重复的条目会被后端和网页都去掉（用户这次又说了同一件事才保留），免得旧事被当成今天的再记一遍；有 `steps` 时显示步骤卡片（第一步高亮、「?」说明大小），设置里「只看下一步」（`winslog-next-only`）只露出第一步，网页用 `js/ai/schema.js` 校验，格式不对用兜底回复；`safety:true` 时前端停止游戏化回应、只显示求助信息。
   - `js/ai/ai-mode.js`：练习模式（规则回复）⇄ AI 模式的开关（`winslog-ai-mode`）；`ai-mode.js` 里的 `ENDPOINT` 已填 Worker 地址 `https://wins-log-ai.yuqinghuangedu.workers.dev/chat`（只是地址，没有 key）；留空则退回 `js/ai/mock-api.js` 的写死示例。
 - **存档版本和升级**（`js/data/store.js`）：存档里有 `version`（现在是 2），`Store.SCHEMA` 是代码认识的最新版。打开网页时如果存档比它旧，先把整份原样另存到 `winslog-island-v1.before-migrate-v<旧版本>`，再按 `MIGRATIONS` 一版一版升级（只整理补全，不删记录）；存档比代码还新则原样保留、不降级。导入旧备份时也会升到最新格式。以后改存档格式：`SCHEMA` 加 1，在 `MIGRATIONS` 里加一个升级函数。
 - **Wins 永久保存**：按日期存在 `winslog-island-v1` 里，任何时候都不自动删除。导入备份前会自动把现在的整份另存到 `winslog-island-v1.before-import`；读不出来的旧数据会原样留在 `winslog-island-v1.unreadable-<时间>`，不会被新的空记录盖掉。「今日任务」「今天的 Wins」只显示当天，要看以前的去「历史」页（`js/ui/history.js`，只读）。
