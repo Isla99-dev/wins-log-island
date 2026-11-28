@@ -169,7 +169,24 @@ var Chat = (function () {
       box.dataset.i = i;
       li.querySelector(".plan-text").textContent = item.text;
       if (item.note) { var nt = document.createElement("small"); nt.className = "plan-note"; nt.textContent = item.note; li.appendChild(nt); }
-      if (plan.applied && plan.mode === "done" && item.checked !== false) li.classList.add("is-struck");
+      if (plan.applied && plan.mode === "done" && item.checked !== false && !item.undone) li.classList.add("is-struck");
+      // 记下之后，每条旁边可以「撤销」（AI 挖错了、其实还没做的那条）
+      if (plan.applied && plan.mode === "done" && item.taskId) {
+        var ub = document.createElement("button");
+        ub.type = "button"; ub.className = "plan-undo";
+        ub.textContent = I18n.t(item.undone ? "plan.undone" : "plan.undo");
+        ub.disabled = !!item.undone;
+        if (item.undone) li.classList.add("is-undone");
+        ub.addEventListener("click", function () {
+          if (item.undone) return;
+          Tasks.takeBack(item.taskId, item.created);
+          item.undone = true;
+          plan.appliedCount = Math.max(0, (plan.appliedCount || 1) - 1);
+          save();
+          var fresh = renderPlan(msg, index); card.parentNode.replaceChild(fresh, card);
+        });
+        li.appendChild(ub);
+      }
       ul.appendChild(li);
     });
     card.appendChild(ul);
@@ -258,7 +275,9 @@ var Chat = (function () {
       setTimeout(function () { li.classList.add("is-struck"); }, i * 260);
     });
     setTimeout(function () {
-      Tasks.recordDone(texts);
+      var done = Tasks.recordDone(texts);
+      chosen.forEach(function (it, i) { if (done[i]) { it.taskId = done[i].id; it.created = done[i].created; } });
+      save();
       replaceCard(card, index);
     }, lis.length * 260 + 450);
   }

@@ -205,8 +205,9 @@ var Tasks = (function () {
   }
 
   // 记下几件做完的事：和已有任务意思一样的就直接完成它，没有的就新建再完成
+  // 返回每件对应的 { id, created }（created = 这件是新建的，撤销时整条删掉；否则只是取消完成）
   function recordDone(texts) {
-    var ids = [];
+    var ids = [], out = [];
     texts.forEach(function (text) {
       var n = norm(text), match = null;
       Store.todosOf().forEach(function (t) {
@@ -216,12 +217,25 @@ var Tasks = (function () {
       var task = match || Store.addTask(text);
       Store.completeTask(task.id);
       ids.push(task.id);
+      out.push({ id: task.id, created: !match });
     });
     renderTodos();
     renderWins(ids);
     ids.forEach(function (id) { announce("complete", id); });
     Sound.play("done");
-    return ids.length;
+    return out;
+  }
+
+  // 撤销一件记错的 Win：新建的就删掉，原来就在任务里的就放回「今日任务」。树和金币跟着收回
+  function takeBack(id, created) {
+    var t = Store.winsOf().filter(function (w) { return w.id === id; })[0];
+    if (!t) return false;
+    if (created) { Store.removeTask(id); announce("remove", id); }
+    else { Store.uncompleteTask(id); announce("undo", id); }
+    Sound.play("undo");
+    renderWins();
+    renderTodos();
+    return true;
   }
 
   // 把一件大任务换成几个小步骤；今天没有这件任务就直接加进去。返回是否真的替换了
@@ -281,6 +295,7 @@ var Tasks = (function () {
     init: init,
     addMany: addMany,
     recordDone: recordDone,
+    takeBack: takeBack,
     replaceWith: replaceWith,
     todayTexts: function () {
       return {
